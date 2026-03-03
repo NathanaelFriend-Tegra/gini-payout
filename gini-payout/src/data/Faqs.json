@@ -1,0 +1,90 @@
+[
+  {
+    "category": "Payouts",
+    "items": [
+      {
+        "question": "How do I claim a payout?",
+        "answer": "Click on the payout link you received via SMS or email. Enter your details and verify with the OTP sent to your phone. Once verified, choose your preferred withdrawal method."
+      },
+      {
+        "question": "How long does an EFT take?",
+        "answer": "EFT withdrawals typically take 1–2 business days to reflect in your bank account, depending on your bank."
+      },
+      {
+        "question": "My payout link has expired. What do I do?",
+        "answer": "Payout links expire after 30 days. Please contact the person or business that sent you the payout and ask them to reissue it."
+      },
+      {
+        "question": "Can I split my payout across multiple accounts?",
+        "answer": "No, each payout can only be sent to one bank account or withdrawal method at a time."
+      },
+      {
+        "question": "What happens if I enter the wrong bank details?",
+        "answer": "If the bank details are incorrect, the transfer will be rejected and the funds will be returned to your GiniPayout wallet within 2–3 business days. You can then retry with the correct details."
+      }
+    ]
+  },
+  {
+    "category": "Account & Security",
+    "items": [
+      {
+        "question": "How do I verify my identity?",
+        "answer": "You will be prompted to verify your identity during your first withdrawal. You'll need your South African ID number and a selfie for facial verification."
+      },
+      {
+        "question": "What do I do if my OTP doesn't arrive?",
+        "answer": "Wait up to 2 minutes, then tap 'Resend OTP'. If it still doesn't arrive, check that your phone number is correct. If the problem persists, contact our support team."
+      },
+      {
+        "question": "Is my money safe?",
+        "answer": "Yes. Your funds are held in a regulated account and protected in accordance with South African financial regulations."
+      },
+      {
+        "question": "Can I change my linked phone number?",
+        "answer": "For security reasons, phone number changes must be verified by our support team. Please contact us via email or phone to request a change."
+      },
+      {
+        "question": "What should I do if I suspect fraud on my account?",
+        "answer": "Contact us immediately on 0800 123 4567 (toll-free). Our team is available Monday–Friday, 8am–5pm SAST. You can also email support@ginipay.co.za with the subject 'Urgent: Fraud Report'."
+      }
+    ]
+  },
+  {
+    "category": "Wallet & Spending",
+    "items": [
+      {
+        "question": "Can I send money to other people?",
+        "answer": "GiniPayout is a restricted wallet. You can only withdraw or spend your funds. To send money to others, upgrade to the full Gini app."
+      },
+      {
+        "question": "Where can I spend my GiniPayout funds?",
+        "answer": "You can spend your funds at any merchant that accepts your chosen payment method, or withdraw to your bank account via EFT."
+      },
+      {
+        "question": "Does my wallet balance expire?",
+        "answer": "Wallet balances are valid for 12 months from the date of the last transaction. After this period, dormant funds may be forfeited. You will be notified before this happens."
+      },
+      {
+        "question": "Is there a fee to withdraw?",
+        "answer": "Standard EFT withdrawals are free. Some instant payment methods may carry a small processing fee, which will always be shown to you before you confirm."
+      }
+    ]
+  },
+  {
+    "category": "Technical Issues",
+    "items": [
+      {
+        "question": "The app is not loading. What should I do?",
+        "answer": "Try closing and reopening the app. If the issue persists, check your internet connection, clear the app cache, or reinstall the app. Contact support if the problem continues."
+      },
+      {
+        "question": "Why is my payment showing as 'pending'?",
+        "answer": "Pending payments are usually processed within a few hours. If a payment has been pending for more than 24 hours, please contact our support team with your transaction reference number."
+      },
+      {
+        "question": "I'm getting an error during verification. What now?",
+        "answer": "Ensure you are in good lighting for the selfie step and that your ID details match exactly. If verification continues to fail, contact support and we'll assist you manually."
+      }
+    ]
+  }
+]

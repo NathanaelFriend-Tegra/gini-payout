@@ -1,0 +1,288 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* GiniSend Design System - Navy & Orange */
+    --background: 220 20% 98%;
+    --foreground: 220 40% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 15%;
+
+    /* Primary: Navy */
+    --primary: 220 60% 30%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: Orange */
+    --secondary: 28 90% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 15% 96%;
+    --muted-foreground: 220 10% 45%;
+
+    /* Accent: Orange (same as secondary for brand consistency) */
+    --accent: 28 90% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Success: Green */
+    --success: 152 69% 40%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning: Amber */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Destructive: Red */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 90%;
+    --input: 220 15% 90%;
+    --ring: 220 60% 30%;
+
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(220 60% 30%) 0%, hsl(220 50% 40%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(220 40% 97%) 0%, hsl(220 20% 99%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(220 20% 98%) 100%);
+
+    --nav-height: 4rem;
+    --header-height: 3.5rem;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(220 40% 15% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(220 40% 15% / 0.08), 0 2px 4px -2px hsl(220 40% 15% / 0.06);
+    --shadow-lg: 0 10px 15px -3px hsl(220 40% 15% / 0.1), 0 4px 6px -4px hsl(220 40% 15% / 0.08);
+    --shadow-card: 0 2px 8px -2px hsl(220 40% 15% / 0.06), 0 0 0 1px hsl(220 15% 90%);
+    --shadow-button: 0 2px 4px -1px hsl(220 60% 30% / 0.25);
+    --shadow-balance: 0 20px 25px -5px hsl(220 40% 15% / 0.12), 0 8px 10px -6px hsl(220 40% 15% / 0.08);
+  }
+
+  .dark {
+    --background: 220 30% 8%;
+    --foreground: 220 15% 95%;
+
+    --card: 220 30% 12%;
+    --card-foreground: 220 15% 95%;
+
+    --popover: 220 30% 12%;
+    --popover-foreground: 220 15% 95%;
+
+    /* Primary: Navy (lighter for dark mode) */
+    --primary: 220 50% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: Orange */
+    --secondary: 28 80% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 20% 18%;
+    --muted-foreground: 220 10% 60%;
+
+    /* Accent: Orange */
+    --accent: 28 80% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Success */
+    --success: 152 55% 45%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning */
+    --warning: 38 80% 50%;
+    --warning-foreground: 220 30% 10%;
+
+    /* Destructive */
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 20%;
+    --input: 220 20% 20%;
+    --ring: 220 50% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Prevent overscroll bounce on iOS */
+  html,
+  body {
+    overscroll-behavior: none;
+    overflow-x: hidden;
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  /* Safe area insets for notched devices */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Prevent text selection on interactive elements */
+  button,
+  a,
+  [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Smooth scrolling */
+  * {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer components {
+
+  /* Balance Card Gradient */
+  .balance-card {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    box-shadow: var(--shadow-balance);
+  }
+
+  /* Glass effect for overlays */
+  .glass {
+    backdrop-filter: blur(12px);
+    background: hsl(var(--background) / 0.8);
+  }
+
+  /* Action grid items */
+  .action-item {
+    @apply flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-card border border-border transition-all duration-200;
+  }
+
+  .action-item:hover {
+    @apply border-primary/30 shadow-md;
+  }
+
+  .action-item:active {
+    @apply scale-95;
+  }
+
+  /* Safe area padding for PWA */
+  .safe-bottom {
+    padding-bottom: max(var(--nav-height), env(safe-area-inset-bottom));
+  }
+
+  .safe-top {
+    padding-top: max(var(--header-height), env(safe-area-inset-top));
+  }
+
+  /* Transaction list item */
+  .txn-item {
+    @apply flex items-center gap-3 p-4 border-b border-border last:border-b-0;
+  }
+
+  /* Chat bubbles */
+  .chat-bubble-user {
+    @apply bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-2 max-w-[80%] ml-auto;
+  }
+
+  .chat-bubble-support {
+    @apply bg-secondary text-secondary-foreground rounded-2xl rounded-bl-md px-4 py-2 max-w-[80%];
+  }
+
+  /* Form inputs */
+  .input-gini {
+    @apply w-full px-4 py-3 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all;
+  }
+
+  /* OTP input */
+  .otp-input {
+    @apply w-12 h-14 text-center text-2xl font-semibold rounded-xl bg-secondary border-2 border-border focus:border-primary focus:outline-none transition-all;
+  }
+
+  /* List item */
+  .list-item {
+    @apply flex items-center justify-between p-4 bg-card rounded-xl border border-border transition-all;
+  }
+
+  .list-item:hover {
+    @apply border-primary/30;
+  }
+
+  .list-item:active {
+    @apply scale-[0.98];
+  }
+}
+
+@layer utilities {
+
+  /* Money display */
+  .money-display {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /* Smooth page transitions */
+  .page-enter {
+    animation: pageEnter 0.3s ease-out;
+  }
+
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Pulse animation for loading states */
+  .pulse-gini {
+    animation: pulseGini 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulseGini {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
+  }
+}
+
+/* Landscape orientation blocker */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .landscape-blocker {
+    display: flex !important;
+  }
+
+  .app-content {
+    display: none !important;
+  }
+}

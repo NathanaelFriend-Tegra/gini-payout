@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GiniPayout — Merchant QR Generator</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+/* ---- YOUR ORIGINAL CSS UNCHANGED ---- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface2: #f0efe9;
+  --border: #e2e0d8;
+  --text: #1a1916;
+  --muted: #8a8880;
+  --accent: #1a1916;
+  --accent-light: #f0ede4;
+  --green: #1a6645;
+  --green-light: #eaf4ee;
+  --red: #c0392b;
+}
+
+body {
+  font-family: 'Sora', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  padding: 20px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-mark { width:36px; height:36px; background:var(--accent); border-radius:10px; display:flex; align-items:center; justify-content:center; }
+.logo-text { font-size:17px; font-weight:700; letter-spacing:-0.02em; }
+.logo-sub { font-size:11px; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; font-weight:600; }
+.header-badge { background:var(--accent-light); border:1px solid var(--border); border-radius:20px; padding:5px 14px; font-size:12px; font-weight:600; color:var(--muted); }
+
+main {
+  flex:1;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  max-width:1100px;
+  margin:0 auto;
+  width:100%;
+  padding:48px 40px;
+  gap:40px;
+}
+
+.panel, .qr-panel {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:32px;
+}
+
+.field { margin-bottom:20px; }
+label { display:block; font-size:13px; font-weight:600; margin-bottom:7px; }
+input {
+  width:100%;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 14px;
+  font-size:14px;
+}
+
+.row-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+.toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; }
+.toggle { width:40px; height:22px; appearance:none; background:var(--border); border-radius:11px; position:relative; cursor:pointer; }
+.toggle:checked { background:var(--accent); }
+
+.generate-btn {
+  width:100%;
+  background:var(--accent);
+  color:white;
+  border:none;
+  border-radius:12px;
+  padding:15px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.qr-panel { display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.qr-result { display:none; flex-direction:column; align-items:center; gap:20px; }
+.qr-result.visible { display:flex; }
+
+.status-bar { margin-top:15px; padding:10px; border-radius:8px; display:none; }
+.status-bar.error { background:#fdecea; color:var(--red); display:block; }
+
+footer { text-align:center; padding:20px; font-size:12px; color:var(--muted); border-top:1px solid var(--border); }
+
+@media(max-width:768px){
+  main{grid-template-columns:1fr; padding:24px 20px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark"></div>
+    <div>
+      <div class="logo-text">GiniPayout</div>
+      <div class="logo-sub">Merchant Portal</div>
+    </div>
+  </div>
+  <div class="header-badge">Sandbox</div>
+</header>
+
+<main>
+
+<!-- FORM PANEL -->
+<div class="panel">
+
+  <div class="field">
+    <label>Description</label>
+    <input type="text" id="description" placeholder="Mowed the lawn" />
+  </div>
+
+  <div class="field">
+    <label>Amount (ZAR)</label>
+    <input type="number" id="amount" step="0.01" min="0.01" />
+  </div>
+
+  <div class="row-2">
+    <div class="field">
+      <label>Payee Account UUID</label>
+      <input type="text" id="payee-account-uuid" placeholder="4ff3aaf2-e7d1-46b7-beef-8b17f00be71c" />
+    </div>
+    <div class="field">
+      <label>Payee Ref Info</label>
+      <input type="text" id="payee-ref-info" placeholder="123 Long Grass Ave" />
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Expiry Time</label>
+    <input type="datetime-local" id="expiry-time" />
+  </div>
+
+  <div class="toggle-row">
+    <span>Use Once</span>
+    <input type="checkbox" class="toggle" id="use-once" />
+  </div>
+
+  <div class="toggle-row">
+    <span>Request Token Image</span>
+    <input type="checkbox" class="toggle" id="request-token-image" />
+  </div>
+
+  <div id="status-bar" class="status-bar"></div>
+
+  <button class="generate-btn" onclick="generateQR()">Generate QR Code</button>
+</div>
+
+<!-- QR PANEL -->
+<div class="qr-panel">
+
+  <div id="qr-result" class="qr-result">
+    <div id="qr-code-output"></div>
+    <div id="qr-amount-label"></div>
+    <div id="token-display"></div>
+  </div>
+
+</div>
+
+</main>
+
+<footer>
+GiniPayout Merchant Portal — Sandbox environment
+</footer>
+
+<script>
+const MARKETPLACE_KEY_ID = '2e8f4b77-e9c6-4928-af1d-19520580ef95';
+
+let currentTokenId = null;
+
+function showStatus(msg){
+  const bar=document.getElementById('status-bar');
+  bar.textContent=msg;
+  bar.className='status-bar error';
+}
+
+function formatToISOWithOffset(dateString){
+  const d=new Date(dateString);
+  const tzOffset=-d.getTimezoneOffset();
+  const sign=tzOffset>=0?'+':'-';
+  const pad=n=>String(Math.floor(Math.abs(n))).padStart(2,'0');
+  return d.getFullYear()+'-'+
+    pad(d.getMonth()+1)+'-'+
+    pad(d.getDate())+'T'+
+    pad(d.getHours())+':'+
+    pad(d.getMinutes())+':'+
+    pad(d.getSeconds())+'.000'+
+    sign+pad(tzOffset/60)+':00';
+}
+
+async function generateQR(){
+  const description=document.getElementById('description').value.trim();
+  const amount=parseFloat(document.getElementById('amount').value);
+  const payeeAccountUuid=document.getElementById('payee-account-uuid').value.trim();
+  const payeeRefInfo=document.getElementById('payee-ref-info').value.trim();
+  const expiryInput=document.getElementById('expiry-time').value;
+  const useOnce=document.getElementById('use-once').checked;
+  const requestTokenImage=document.getElementById('request-token-image').checked;
+
+  if(!description||!amount||!payeeAccountUuid){
+    showStatus('Please complete required fields.');
+    return;
+  }
+
+  const expiryTime=expiryInput?formatToISOWithOffset(expiryInput):null;
+
+  const payload={
+    amount:amount,
+    payeeAccountUuid:payeeAccountUuid,
+    payeeRefInfo:payeeRefInfo,
+    description:description,
+    expiryTime:expiryTime,
+    requestTokenImage:requestTokenImage,
+    useOnce:useOnce
+  };
+
+  try{
+    const response=await fetch(
+      'https://apim-sbox.omnea.co.za/sandbox/chips/money/payments/requests?version=1.0',
+      {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'marketplaceKeyId':MARKETPLACE_KEY_ID
+        },
+        body:JSON.stringify(payload)
+      }
+    );
+
+    const data=await response.json();
+    if(!response.ok) throw new Error(data.message||'API error');
+
+    const tokenId=data.tokenId||data.requestId;
+    currentTokenId=tokenId;
+
+    renderQR(tokenId,amount);
+
+  }catch(err){
+    showStatus(err.message);
+  }
+}
+
+function renderQR(tokenId,amount){
+  const container=document.getElementById('qr-code-output');
+  container.innerHTML='';
+  new QRCode(container,{
+    text:tokenId,
+    width:200,
+    height:200
+  });
+
+  document.getElementById('qr-amount-label').textContent='R'+amount.toFixed(2);
+  document.getElementById('token-display').textContent=tokenId;
+  document.getElementById('qr-result').classList.add('visible');
+}
+</script>
+
+</body>
+</html>
