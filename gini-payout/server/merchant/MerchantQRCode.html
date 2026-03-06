@@ -10,7 +10,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
-/* ---- YOUR ORIGINAL CSS UNCHANGED ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
@@ -25,6 +24,8 @@
   --green: #1a6645;
   --green-light: #eaf4ee;
   --red: #c0392b;
+  --purple: #5b4fcf;
+  --purple-light: #eeecfb;
 }
 
 body {
@@ -46,68 +47,186 @@ header {
 }
 
 .logo { display:flex; align-items:center; gap:10px; }
-.logo-mark { width:36px; height:36px; background:var(--accent); border-radius:10px; display:flex; align-items:center; justify-content:center; }
+.logo-mark {
+  width:36px; height:36px; background:var(--accent);
+  border-radius:10px; display:flex; align-items:center; justify-content:center;
+}
+.logo-mark svg { width:20px; height:20px; }
 .logo-text { font-size:17px; font-weight:700; letter-spacing:-0.02em; }
 .logo-sub { font-size:11px; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; font-weight:600; }
-.header-badge { background:var(--accent-light); border:1px solid var(--border); border-radius:20px; padding:5px 14px; font-size:12px; font-weight:600; color:var(--muted); }
+.header-badge {
+  background:var(--accent-light); border:1px solid var(--border);
+  border-radius:20px; padding:5px 14px; font-size:12px; font-weight:600; color:var(--muted);
+}
 
 main {
   flex:1;
   display:grid;
-  grid-template-columns:1fr 1fr;
-  max-width:1100px;
+  grid-template-columns:1fr 420px;
+  max-width:1160px;
   margin:0 auto;
   width:100%;
   padding:48px 40px;
   gap:40px;
+  align-items:start;
 }
 
-.panel, .qr-panel {
+.panel {
   background:var(--surface);
   border:1px solid var(--border);
   border-radius:20px;
   padding:32px;
 }
 
-.field { margin-bottom:20px; }
-label { display:block; font-size:13px; font-weight:600; margin-bottom:7px; }
-input {
+.panel-title {
+  font-size:13px; font-weight:700; letter-spacing:0.06em;
+  text-transform:uppercase; color:var(--muted);
+  margin-bottom:24px; padding-bottom:14px;
+  border-bottom:1px solid var(--border);
+}
+
+.section-label {
+  font-size:11px; font-weight:700; letter-spacing:0.08em;
+  text-transform:uppercase; color:var(--purple);
+  margin: 24px 0 14px; display:flex; align-items:center; gap:8px;
+}
+.section-label::after {
+  content:''; flex:1; height:1px; background:var(--purple-light);
+}
+
+.field { margin-bottom:16px; }
+label { display:block; font-size:13px; font-weight:600; margin-bottom:7px; color:var(--text); }
+label .required { color:#c0392b; margin-left:3px; }
+label .hint { font-weight:400; color:var(--muted); font-size:11px; margin-left:6px; }
+
+input, textarea, select {
   width:100%;
   background:var(--surface2);
   border:1px solid var(--border);
   border-radius:10px;
   padding:12px 14px;
   font-size:14px;
+  font-family:'Sora', sans-serif;
+  color:var(--text);
+  transition: border-color 0.15s;
+  outline:none;
 }
+input:focus, textarea:focus, select:focus {
+  border-color: var(--purple);
+  background: #fff;
+}
+textarea { resize:vertical; min-height:72px; line-height:1.5; }
 
 .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
 
-.toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; }
-.toggle { width:40px; height:22px; appearance:none; background:var(--border); border-radius:11px; position:relative; cursor:pointer; }
-.toggle:checked { background:var(--accent); }
+.toggle-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 0; border-bottom:1px solid var(--border);
+}
+.toggle-row:last-of-type { border-bottom:none; }
+.toggle-info { display:flex; flex-direction:column; gap:2px; }
+.toggle-info span { font-size:14px; font-weight:600; }
+.toggle-info small { font-size:12px; color:var(--muted); }
+
+.toggle {
+  width:44px; height:24px; appearance:none;
+  background:var(--border); border-radius:12px;
+  position:relative; cursor:pointer; transition:background 0.2s; flex-shrink:0;
+}
+.toggle::after {
+  content:''; position:absolute; top:3px; left:3px;
+  width:18px; height:18px; border-radius:50%; background:#fff;
+  transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle:checked { background:var(--purple); }
+.toggle:checked::after { transform:translateX(20px); }
 
 .generate-btn {
-  width:100%;
-  background:var(--accent);
-  color:white;
-  border:none;
-  border-radius:12px;
-  padding:15px;
-  font-weight:700;
-  cursor:pointer;
+  width:100%; background:var(--accent); color:white;
+  border:none; border-radius:12px; padding:15px;
+  font-weight:700; cursor:pointer; font-size:15px;
+  font-family:'Sora', sans-serif; letter-spacing:0.01em;
+  margin-top:24px; transition:opacity 0.15s;
+}
+.generate-btn:hover { opacity:0.85; }
+.generate-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* QR Panel */
+.qr-panel {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:32px;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  min-height:360px;
+  position:sticky; top:24px;
 }
 
-.qr-panel { display:flex; flex-direction:column; align-items:center; justify-content:center; }
-.qr-result { display:none; flex-direction:column; align-items:center; gap:20px; }
+.qr-idle {
+  display:flex; flex-direction:column;
+  align-items:center; gap:14px; text-align:center;
+}
+.qr-idle-icon {
+  width:80px; height:80px; border-radius:20px;
+  background:var(--surface2); border:2px dashed var(--border);
+  display:flex; align-items:center; justify-content:center;
+}
+.qr-idle p { font-size:13px; color:var(--muted); max-width:200px; line-height:1.6; }
+
+.qr-result { display:none; flex-direction:column; align-items:center; gap:20px; width:100%; }
 .qr-result.visible { display:flex; }
 
-.status-bar { margin-top:15px; padding:10px; border-radius:8px; display:none; }
-.status-bar.error { background:#fdecea; color:var(--red); display:block; }
+.qr-code-wrap {
+  padding:16px; background:var(--surface2);
+  border:1px solid var(--border); border-radius:16px;
+}
 
-footer { text-align:center; padding:20px; font-size:12px; color:var(--muted); border-top:1px solid var(--border); }
+.qr-meta { width:100%; }
+.qr-amount {
+  font-size:36px; font-weight:800; letter-spacing:-0.03em;
+  text-align:center; color:var(--text);
+}
+.qr-amount span { font-size:20px; font-weight:600; color:var(--muted); }
 
-@media(max-width:768px){
-  main{grid-template-columns:1fr; padding:24px 20px;}
+.qr-details-grid {
+  width:100%; background:var(--surface2);
+  border:1px solid var(--border); border-radius:12px;
+  overflow:hidden; margin-top:4px;
+}
+.qr-detail-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 14px; border-bottom:1px solid var(--border); gap:12px;
+}
+.qr-detail-row:last-child { border-bottom:none; }
+.qr-detail-label { font-size:12px; color:var(--muted); flex-shrink:0; }
+.qr-detail-value {
+  font-size:12px; font-weight:600; color:var(--text); font-family:'DM Mono', monospace;
+  text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;
+}
+
+.token-display {
+  font-family:'DM Mono', monospace; font-size:11px;
+  color:var(--muted); word-break:break-all; text-align:center;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:8px; padding:8px 12px; width:100%;
+}
+
+.status-bar { margin-top:12px; padding:12px 16px; border-radius:10px; display:none; font-size:13px; }
+.status-bar.error { background:#fdecea; color:var(--red); display:block; border:1px solid #f5c6c2; }
+.status-bar.success { background:var(--green-light); color:var(--green); display:block; border:1px solid #b8dfc8; }
+
+footer {
+  text-align:center; padding:20px;
+  font-size:12px; color:var(--muted);
+  border-top:1px solid var(--border);
+}
+
+@media(max-width:900px){
+  main { grid-template-columns:1fr; padding:24px 20px; }
+  .qr-panel { position:static; }
+  header { padding:16px 20px; }
 }
 </style>
 </head>
@@ -115,7 +234,17 @@ footer { text-align:center; padding:20px; font-size:12px; color:var(--muted); bo
 
 <header>
   <div class="logo">
-    <div class="logo-mark"></div>
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+        <rect x="14" y="14" width="3" height="3" rx="0.5" fill="white"/>
+        <rect x="18" y="14" width="3" height="3" rx="0.5" fill="white"/>
+        <rect x="14" y="18" width="3" height="3" rx="0.5" fill="white"/>
+        <rect x="18" y="18" width="3" height="3" rx="0.5" fill="white"/>
+      </svg>
+    </div>
     <div>
       <div class="logo-text">GiniPayout</div>
       <div class="logo-sub">Merchant Portal</div>
@@ -128,153 +257,290 @@ footer { text-align:center; padding:20px; font-size:12px; color:var(--muted); bo
 
 <!-- FORM PANEL -->
 <div class="panel">
+  <div class="panel-title">Generate Payment QR Code</div>
+
+  <!-- PAYMENT DETAILS -->
+  <div class="section-label">Payment Details</div>
 
   <div class="field">
-    <label>Description</label>
-    <input type="text" id="description" placeholder="Mowed the lawn" />
-  </div>
-
-  <div class="field">
-    <label>Amount (ZAR)</label>
-    <input type="number" id="amount" step="0.01" min="0.01" />
+    <label>Description <span class="required">*</span></label>
+    <input type="text" id="description" placeholder="e.g. Grocery order #12345" />
   </div>
 
   <div class="row-2">
     <div class="field">
-      <label>Payee Account UUID</label>
-      <input type="text" id="payee-account-uuid" placeholder="4ff3aaf2-e7d1-46b7-beef-8b17f00be71c" />
+      <label>Amount (ZAR) <span class="required">*</span></label>
+      <input type="number" id="amount" step="0.01" min="0.01" placeholder="0.00" />
     </div>
     <div class="field">
-      <label>Payee Ref Info</label>
-      <input type="text" id="payee-ref-info" placeholder="123 Long Grass Ave" />
+      <label>Gratuity Amount <span class="hint">optional</span></label>
+      <input type="number" id="gratuity-amount" step="0.01" min="0" value="0" placeholder="0.00" />
+    </div>
+  </div>
+
+  <!-- PAYEE DETAILS -->
+  <div class="section-label">Payee Details</div>
+
+  <div class="row-2">
+    <div class="field">
+      <label>Payee Account UUID <span class="required">*</span></label>
+      <input type="text" id="payee-account-uuid" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+    </div>
+    <div class="field">
+      <label>Payee Ref Info <span class="required">*</span></label>
+      <input type="text" id="payee-ref-info" placeholder="e.g. online-20200305-INV123" />
     </div>
   </div>
 
   <div class="field">
-    <label>Expiry Time</label>
+    <label>Payee Message <span class="hint">shown to payer</span></label>
+    <textarea id="payee-message" placeholder="e.g. Please arrange delivery on a Friday"></textarea>
+  </div>
+
+  <!-- SITE DETAILS -->
+  <div class="section-label">Site Details</div>
+
+  <div class="row-2">
+    <div class="field">
+      <label>Site Name <span class="required">*</span></label>
+      <input type="text" id="site-name" placeholder="e.g. The Web Shop" />
+    </div>
+    <div class="field">
+      <label>Payee Site Ref Info</label>
+      <input type="text" id="payee-site-ref-info" placeholder="e.g. ONLINE-GROC" />
+    </div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <div class="section-label">Categories</div>
+
+  <div class="row-3">
+    <div class="field">
+      <label>Category 1</label>
+      <input type="text" id="category-1" placeholder="e.g. Online" />
+    </div>
+    <div class="field">
+      <label>Category 2</label>
+      <input type="text" id="category-2" placeholder="e.g. Food" />
+    </div>
+    <div class="field">
+      <label>Category 3</label>
+      <input type="text" id="category-3" placeholder="e.g. Canned Goods" />
+    </div>
+  </div>
+
+  <!-- OPTIONS -->
+  <div class="section-label">Options</div>
+
+  <div class="field">
+    <label>Expiry Time <span class="hint">optional</span></label>
     <input type="datetime-local" id="expiry-time" />
   </div>
 
   <div class="toggle-row">
-    <span>Use Once</span>
+    <div class="toggle-info">
+      <span>Use Once</span>
+      <small>QR code becomes invalid after first payment</small>
+    </div>
     <input type="checkbox" class="toggle" id="use-once" />
   </div>
 
   <div class="toggle-row">
-    <span>Request Token Image</span>
+    <div class="toggle-info">
+      <span>Request Token Image</span>
+      <small>Include a QR image URL in the API response</small>
+    </div>
     <input type="checkbox" class="toggle" id="request-token-image" />
   </div>
 
   <div id="status-bar" class="status-bar"></div>
 
-  <button class="generate-btn" onclick="generateQR()">Generate QR Code</button>
+  <button class="generate-btn" id="generate-btn" onclick="generateQR()">Generate QR Code</button>
 </div>
 
 <!-- QR PANEL -->
 <div class="qr-panel">
 
+  <div class="qr-idle" id="qr-idle-state">
+    <div class="qr-idle-icon">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c8c6be" stroke-width="1.5">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <line x1="14" y1="14" x2="21" y2="14"/>
+        <line x1="14" y1="17" x2="17" y2="17"/>
+        <line x1="17" y1="21" x2="21" y2="21"/>
+        <line x1="21" y1="17" x2="21" y2="21"/>
+        <line x1="14" y1="20" x2="14" y2="21"/>
+      </svg>
+    </div>
+    <p>Fill in the payment details and click <strong>Generate QR Code</strong> to create a scannable payment request.</p>
+  </div>
+
   <div id="qr-result" class="qr-result">
-    <div id="qr-code-output"></div>
-    <div id="qr-amount-label"></div>
-    <div id="token-display"></div>
+
+    <div class="qr-code-wrap">
+      <div id="qr-code-output"></div>
+    </div>
+
+    <div class="qr-meta">
+      <div class="qr-amount" id="qr-amount-label"></div>
+    </div>
+
+    <div class="qr-details-grid" id="qr-details-grid"></div>
+
+    <div class="token-display" id="token-display"></div>
+
   </div>
 
 </div>
-
 </main>
 
 <footer>
-GiniPayout Merchant Portal — Sandbox environment
+  GiniPayout Merchant Portal — Sandbox environment
 </footer>
 
 <script>
 const MARKETPLACE_KEY_ID = '2e8f4b77-e9c6-4928-af1d-19520580ef95';
 
-let currentTokenId = null;
-
-function showStatus(msg){
-  const bar=document.getElementById('status-bar');
-  bar.textContent=msg;
-  bar.className='status-bar error';
+function showStatus(msg, type = 'error') {
+  const bar = document.getElementById('status-bar');
+  bar.textContent = msg;
+  bar.className = `status-bar ${type}`;
 }
 
-function formatToISOWithOffset(dateString){
-  const d=new Date(dateString);
-  const tzOffset=-d.getTimezoneOffset();
-  const sign=tzOffset>=0?'+':'-';
-  const pad=n=>String(Math.floor(Math.abs(n))).padStart(2,'0');
-  return d.getFullYear()+'-'+
-    pad(d.getMonth()+1)+'-'+
-    pad(d.getDate())+'T'+
-    pad(d.getHours())+':'+
-    pad(d.getMinutes())+':'+
-    pad(d.getSeconds())+'.000'+
-    sign+pad(tzOffset/60)+':00';
+function clearStatus() {
+  const bar = document.getElementById('status-bar');
+  bar.className = 'status-bar';
 }
 
-async function generateQR(){
-  const description=document.getElementById('description').value.trim();
-  const amount=parseFloat(document.getElementById('amount').value);
-  const payeeAccountUuid=document.getElementById('payee-account-uuid').value.trim();
-  const payeeRefInfo=document.getElementById('payee-ref-info').value.trim();
-  const expiryInput=document.getElementById('expiry-time').value;
-  const useOnce=document.getElementById('use-once').checked;
-  const requestTokenImage=document.getElementById('request-token-image').checked;
+function formatToISOWithOffset(dateString) {
+  const d = new Date(dateString);
+  const tzOffset = -d.getTimezoneOffset();
+  const sign = tzOffset >= 0 ? '+' : '-';
+  const pad = n => String(Math.floor(Math.abs(n))).padStart(2, '0');
+  return d.getFullYear() + '-' +
+    pad(d.getMonth() + 1) + '-' +
+    pad(d.getDate()) + 'T' +
+    pad(d.getHours()) + ':' +
+    pad(d.getMinutes()) + ':' +
+    pad(d.getSeconds()) + '.000' +
+    sign + pad(tzOffset / 60) + ':00';
+}
 
-  if(!description||!amount||!payeeAccountUuid){
-    showStatus('Please complete required fields.');
+async function generateQR() {
+  clearStatus();
+
+  const description      = document.getElementById('description').value.trim();
+  const amount           = parseFloat(document.getElementById('amount').value);
+  const gratuityAmount   = parseFloat(document.getElementById('gratuity-amount').value) || 0;
+  const payeeAccountUuid = document.getElementById('payee-account-uuid').value.trim();
+  const payeeRefInfo     = document.getElementById('payee-ref-info').value.trim();
+  const payeeMessage     = document.getElementById('payee-message').value.trim();
+  const siteName         = document.getElementById('site-name').value.trim();
+  const payeeSiteRefInfo = document.getElementById('payee-site-ref-info').value.trim();
+  const category1        = document.getElementById('category-1').value.trim();
+  const category2        = document.getElementById('category-2').value.trim();
+  const category3        = document.getElementById('category-3').value.trim();
+  const expiryInput      = document.getElementById('expiry-time').value;
+  const useOnce          = document.getElementById('use-once').checked;
+  const requestTokenImage = document.getElementById('request-token-image').checked;
+
+  if (!description || !amount || !payeeAccountUuid || !payeeRefInfo || !siteName) {
+    showStatus('Please fill in all required fields (marked with *).');
+    return;
+  }
+  if (isNaN(amount) || amount <= 0) {
+    showStatus('Amount must be a positive number.');
     return;
   }
 
-  const expiryTime=expiryInput?formatToISOWithOffset(expiryInput):null;
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
 
-  const payload={
-    amount:amount,
-    payeeAccountUuid:payeeAccountUuid,
-    payeeRefInfo:payeeRefInfo,
-    description:description,
-    expiryTime:expiryTime,
-    requestTokenImage:requestTokenImage,
-    useOnce:useOnce
+  const expiryTime = expiryInput ? formatToISOWithOffset(expiryInput) : null;
+
+  // Full payload — includes all fields payQrCode needs on the consumer side
+  const payload = {
+    amount,
+    gratuityAmount,
+    payeeAccountUuid,
+    payeeRefInfo,
+    payeeMessage,
+    payeeSiteRefInfo,
+    payeeCategory1: category1,
+    payeeCategory2: category2,
+    payeeCategory3: category3,
+    payeeSiteName:  siteName,
+    siteName,
+    description,
+    ...(expiryTime && { expiryTime }),
+    requestTokenImage,
+    useOnce,
   };
 
-  try{
-    const response=await fetch(
+  try {
+    const response = await fetch(
       'https://apim-sbox.omnea.co.za/sandbox/chips/money/payments/requests?version=1.0',
       {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'marketplaceKeyId':MARKETPLACE_KEY_ID
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'marketplaceKeyId': MARKETPLACE_KEY_ID
         },
-        body:JSON.stringify(payload)
+        body: JSON.stringify(payload)
       }
     );
 
-    const data=await response.json();
-    if(!response.ok) throw new Error(data.message||'API error');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || data.description || 'API error');
 
-    const tokenId=data.tokenId||data.requestId;
-    currentTokenId=tokenId;
+    const tokenId = data.tokenId || data.requestId;
+    renderQR(tokenId, amount, gratuityAmount, siteName, payeeRefInfo, category1, category2, category3);
+    showStatus('QR code generated successfully.', 'success');
 
-    renderQR(tokenId,amount);
-
-  }catch(err){
+  } catch (err) {
     showStatus(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate QR Code';
   }
 }
 
-function renderQR(tokenId,amount){
-  const container=document.getElementById('qr-code-output');
-  container.innerHTML='';
-  new QRCode(container,{
-    text:tokenId,
-    width:200,
-    height:200
-  });
+function renderQR(tokenId, amount, gratuityAmount, siteName, payeeRefInfo, cat1, cat2, cat3) {
+  // Hide idle state, show result
+  document.getElementById('qr-idle-state').style.display = 'none';
 
-  document.getElementById('qr-amount-label').textContent='R'+amount.toFixed(2);
-  document.getElementById('token-display').textContent=tokenId;
+  const container = document.getElementById('qr-code-output');
+  container.innerHTML = '';
+  new QRCode(container, { text: tokenId, width: 200, height: 200 });
+
+  // Amount display
+  const amountEl = document.getElementById('qr-amount-label');
+  amountEl.innerHTML = `<span>R</span>${amount.toFixed(2)}`;
+  if (gratuityAmount > 0) {
+    amountEl.innerHTML += `<div style="font-size:13px;font-weight:500;color:var(--muted);margin-top:2px">+ R${gratuityAmount.toFixed(2)} gratuity</div>`;
+  }
+
+  // Details grid
+  const grid = document.getElementById('qr-details-grid');
+  const rows = [
+    { label: 'Site', value: siteName },
+    { label: 'Payee Ref', value: payeeRefInfo },
+    { label: 'Category', value: [cat1, cat2, cat3].filter(Boolean).join(' › ') || '—' },
+    { label: 'Token', value: tokenId },
+  ];
+  grid.innerHTML = rows.map(r => `
+    <div class="qr-detail-row">
+      <span class="qr-detail-label">${r.label}</span>
+      <span class="qr-detail-value" title="${r.value}">${r.value}</span>
+    </div>
+  `).join('');
+
+  // Token display
+  document.getElementById('token-display').textContent = tokenId;
+
   document.getElementById('qr-result').classList.add('visible');
 }
 </script>

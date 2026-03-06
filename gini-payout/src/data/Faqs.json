@@ -71,6 +71,43 @@
     ]
   },
   {
+    "category": "Savings",
+    "items": [
+      {
+        "question": "What is the GiniPayout savings feature?",
+        "answer": "The savings feature lets you set aside a portion of your wallet balance automatically. You choose a target savings balance and an optional monthly increase, and GiniPayout manages the rest."
+      },
+      {
+        "question": "How do I enable savings?",
+        "answer": "Go to the Savings page from your home screen, enter your desired savings target and monthly increase amount, then tap 'Enable Savings'. Your plan will be activated immediately."
+      },
+      {
+        "question": "What is a savings target balance?",
+        "answer": "Your savings target is the balance you want to maintain in your savings pot. For example, if you set R500 as your target, GiniPayout will work towards keeping R500 set aside from your wallet."
+      },
+      {
+        "question": "What is the monthly savings increase?",
+        "answer": "The monthly increase automatically raises your savings target by a set amount each month. For example, if your target is R100 and your monthly increase is R2.50, your target will grow to R102.50 next month, then R105 the month after, and so on."
+      },
+      {
+        "question": "Can I change my savings target at any time?",
+        "answer": "Yes. Open the Savings page, update your target balance or monthly increase, and tap 'Save Changes'. Your new settings take effect immediately."
+      },
+      {
+        "question": "Can I withdraw from my savings balance?",
+        "answer": "Your savings balance is part of your overall wallet. You can withdraw it at any time, though doing so will reduce your progress towards your savings target."
+      },
+      {
+        "question": "What happens if I clear my savings plan?",
+        "answer": "Clearing your savings plan removes your target and monthly increase settings. Your wallet balance is not affected — only the savings configuration is deleted. You can set up a new savings plan at any time."
+      },
+      {
+        "question": "Is there a minimum savings amount?",
+        "answer": "Your savings target must be at least R1.00. There is no maximum limit, though it cannot exceed your available wallet balance."
+      }
+    ]
+  },
+  {
     "category": "Technical Issues",
     "items": [
       {

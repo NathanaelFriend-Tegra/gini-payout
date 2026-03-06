@@ -7,7 +7,6 @@ dotenv.config();
 
 const app = express();
 
-// Allow multiple origins (dev server, Flutter web, production)
 const allowedOrigins = [
   "http://localhost:8080",
   "http://192.168.68.107:8080",
@@ -17,7 +16,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
@@ -27,28 +25,22 @@ app.use(cors({
   }
 }));
 
-app.use(express.json());
 app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '10mb', type: 'application/json-patch+json' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 const PORT = process.env.PORT || 3001;
 const MARKETPLACE_KEY_ID = process.env.OMNEA_MARKETPLACE_KEY_ID;
-const AUTHORIZATION = process.env.AUTHORIZATION;
 
-// Startup checks
-if (!process.env.OMNEA_BASE_URL) {
-  console.error("❌ Missing OMNEA_BASE_URL in .env");
-}
-if (!MARKETPLACE_KEY_ID) {
-  console.error("❌ Missing OMNEA_MARKETPLACE_KEY_ID in .env");
-}
+if (!process.env.OMNEA_BASE_URL) console.error("❌ Missing OMNEA_BASE_URL in .env");
+if (!MARKETPLACE_KEY_ID) console.error("❌ Missing OMNEA_MARKETPLACE_KEY_ID in .env");
 
-// Health check
+// ── Health ────────────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
-// GET /api/register/status
+// ── Registration ──────────────────────────────────────────────────────────────
 app.get('/api/register/status', async (req, res) => {
   try {
     const { mobileNumber, version } = req.query;
@@ -67,36 +59,23 @@ app.get('/api/register/status', async (req, res) => {
 app.post('/api/register/persons', async (req, res) => {
   try {
     const url = `${process.env.OMNEA_BASE_URL}chips/register/persons?version=1.0`;
-
-    console.log('📝 Creating profile, body keys:', Object.keys(req.body));
-    console.log('📝 Identity keys:', Object.keys(req.body.identity || {}));
-
     const resp = await fetch(url, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'marketplaceKeyId': MARKETPLACE_KEY_ID
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
       },
       body: JSON.stringify(req.body),
     });
-
     const text = await resp.text();
-    console.log('📥 Register response status:', resp.status);
-    console.log('📥 Register response body:', text.substring(0, 300));
-
-    try {
-      res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      res.status(resp.status).send(text);
-    }
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
   } catch (err) {
-    console.error('❌ Register error:', err);
     res.status(500).json({ error: String(err) });
   }
 });
 
-// GET /api/register/mobile/otp  (send OTP)
 app.get('/api/register/mobile/otp', async (req, res) => {
   try {
     const { mobileNumber, version } = req.query;
@@ -105,7 +84,6 @@ app.get('/api/register/mobile/otp', async (req, res) => {
       method: 'GET',
       headers: { 'Accept': 'application/json', 'marketplaceKeyId': MARKETPLACE_KEY_ID },
     });
-    // Sandbox returns empty body, so handle gracefully
     const text = await resp.text();
     res.status(resp.status).json(text ? JSON.parse(text) : { sent: true });
   } catch (err) {
@@ -113,7 +91,6 @@ app.get('/api/register/mobile/otp', async (req, res) => {
   }
 });
 
-// POST /api/register/mobile/otp  (verify OTP)
 app.post('/api/register/mobile/otp', async (req, res) => {
   try {
     const { mobileNumber, version } = req.query;
@@ -123,7 +100,6 @@ app.post('/api/register/mobile/otp', async (req, res) => {
       headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'marketplaceKeyId': MARKETPLACE_KEY_ID },
       body: JSON.stringify(req.body),
     });
-    // Sandbox returns empty body
     const text = await resp.text();
     res.status(resp.status).json(text ? JSON.parse(text) : { verified: true });
   } catch (err) {
@@ -131,7 +107,7 @@ app.post('/api/register/mobile/otp', async (req, res) => {
   }
 });
 
-// POST /api/auth/pin  (set PIN)
+// ── Auth ──────────────────────────────────────────────────────────────────────
 app.post('/api/auth/pin', async (req, res) => {
   try {
     const url = `${process.env.OMNEA_BASE_URL}chips/auth/pin?version=1.0`;
@@ -147,264 +123,10 @@ app.post('/api/auth/pin', async (req, res) => {
   }
 });
 
-// GET /api/transactions
-app.get("/api/transactions", async (req, res) => {
-  try {
-    const { accountUuid, version } = req.query;
-    const authToken = req.headers['authorization'];
-
-    console.log('📋 Transactions request:', { accountUuid });
-    console.log('🔑 Auth token present:', !!authToken);
-    console.log('🔑 Token preview:', authToken?.substring(0, 30) + '...');
-
-    if (!accountUuid) {
-      return res.status(400).json({ error: "accountUuid is required" });
-    }
-
-    if (!authToken) {
-      return res.status(401).json({ error: "Authorization token required" });
-    }
-
-    const url = new URL("chips/money/transactions", process.env.OMNEA_BASE_URL);
-    url.searchParams.set("accountUuid", accountUuid);
-    if (version) url.searchParams.set("version", version);
-
-    console.log("📡 Fetching transactions:", url.toString());
-
-    const resp = await fetch(url.toString(), {
-      method: "GET",
-      headers: {
-        'Accept': "application/json",
-        'marketplaceKeyId': MARKETPLACE_KEY_ID,
-        'Authorization': `Bearer ${authToken}`, // ← user's JWT from login
-      }
-    });
-
-    const text = await resp.text();
-    console.log('📥 Transactions response status:', resp.status);
-
-    try {
-      res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      res.status(resp.status).send(text);
-    }
-  } catch (err) {
-    console.error("❌ Transactions error:", err);
-    res.status(500).json({ error: "Proxy failed", detail: String(err) });
-  }
-});
-
-// POST /api/payments/qr/pay
-app.post('/api/payments/qr/pay', async (req, res) => {
-  try {
-    const {
-      feeSponsorType,
-      paymentType,
-      description,
-      amount,
-      gratuityAmount,
-      payeeAccountUuid,
-      payeeRefInfo,
-      payeeSiteName,
-      siteName,
-      payerAccountUuid,
-      payerRefInfo,
-      requestId,
-      tokenId
-    } = req.body;
-
-    console.log('💳 Processing QR payment:', { amount, payerAccountUuid, payeeAccountUuid });
-
-    const response = await fetch('https://tar-sbox.tlsag.net/money/payments/qr/pay', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': process.env.Authorization, // Or however you handle auth
-        // Add other required headers if needed
-      },
-      body: JSON.stringify({
-        feeSponsorType,
-        paymentType,
-        description,
-        amount,
-        gratuityAmount,
-        payeeAccountUuid,
-        payeeRefInfo,
-        payeeSiteName,
-        siteName,
-        payerAccountUuid,
-        payerRefInfo,
-        requestId,
-        tokenId
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('Payment API error:', response.status, data);
-      return res.status(response.status).json(data);
-    }
-
-    console.log('✅ Payment successful:', data);
-    res.json(data);
-  } catch (error) {
-    console.error('Payment proxy error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/accounts/:uuid', async (req, res) => {
-  try {
-    const { uuid } = req.params;
-    const authToken = req.headers['authorization'];
-
-    console.log('👤 Account details request:', { uuid });
-
-    const url = `${process.env.OMNEA_BASE_URL}chips/money/accounts/${uuid}?version=1.0`;
-
-    const resp = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'marketplaceKeyId': MARKETPLACE_KEY_ID,
-        'Authorization': `Bearer ${authToken}`,
-      },
-    });
-
-    const text = await resp.text();
-    console.log('📥 Account response status:', resp.status);
-
-    try {
-      res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      res.status(resp.status).send(text);
-    }
-  } catch (err) {
-    console.error('❌ Account details error:', err);
-    res.status(500).json({ error: 'Proxy failed', detail: String(err) });
-  }
-});
-
-// ─── Replace your existing app.post('/api/cashsend/atm', ...) with this ────────
-
-app.post('/api/chips/money/cashsends/atm', async (req, res) => {
-  try {
-    const authToken = req.headers['authorization'];
-    const { requestId, payerRefInfo, payerAccountUuid, mobileNumber, amount, provider } = req.body;
-
-    console.log('=== ATM Cash Send Request ===');
-    console.log('Body:', { requestId, payerRefInfo, payerAccountUuid, mobileNumber, amount, provider });
-
-    const apiUrl = `${process.env.OMNEA_BASE_URL}chips/money/cashsends/atm`;
-    console.log('API URL:', apiUrl);
-
-    const requestBody = { requestId, payerRefInfo, payerAccountUuid, mobileNumber, amount, provider };
-    console.log('Request Body:', requestBody);
-
-    const resp = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'marketplaceKeyId': MARKETPLACE_KEY_ID,
-        'Authorization': `Bearer ${authToken}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    console.log('Response Status:', resp.status);
-    const text = await resp.text();
-    console.log('Response Body:', text.substring(0, 500));
-
-    try {
-      res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      res.status(resp.status).send(text);
-    }
-  } catch (error) {
-    console.error('❌ ATM Cash Send Error:', error.message);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
-  }
-});
-
-// Add this route to your backend server
-app.post('/api/eft/payment', async (req, res) => {
-  try {
-    const {
-      amount,
-      payerRefInfo,
-      branchCode,
-      accountName,
-      accountNumber,
-      bankRefInfo,
-      bankCode,
-      bankAccountType,
-      bankPaymentMethodType
-    } = req.body;
-
-    console.log('=== EFT Payment Request ===');
-    console.log('Body:', req.body);
-
-    const apiUrl = `${process.env.OMNEA_BASE_URL}chips/money/eft/payments`;
-    console.log('API URL:', apiUrl);
-
-    const requestBody = {
-      amount,
-      payerAccountUuid: process.env.AccountUuid,
-      payerRefInfo,
-      branchCode,
-      accountName,
-      accountNumber,
-      bankRefInfo,
-      bankCode,
-      bankAccountType,
-      bankPaymentMethodType
-    };
-    console.log('Request Body:', JSON.stringify(requestBody, null, 2));
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': process.env.Authorization,
-        'Content-Type': 'application/json',
-        'marketplaceKeyId': process.env.OMNEA_MARKETPLACE_KEY_ID,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    console.log('Response Status:', response.status);
-
-    const data = await response.json();
-    console.log('Response Data:', JSON.stringify(data, null, 2));
-
-    if (!response.ok) {
-      console.error('API Error Response:', data);
-      return res.status(response.status).json({
-        error: data.message || data.error || 'EFT payment failed',
-        details: data
-      });
-    }
-
-    res.json(data);
-  } catch (error) {
-    console.error('=== EFT Payment Error ===');
-    console.error('Error Message:', error.message);
-
-    res.status(500).json({
-      error: 'Internal server error',
-      message: error.message,
-    });
-  }
-});
-
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { packageName, mobileNumber, pin } = req.body;
     console.log('🔐 Login attempt:', { mobileNumber });
-
     const url = `${process.env.OMNEA_BASE_URL}chips/auth/login`;
     const response = await fetch(url, {
       method: 'POST',
@@ -415,14 +137,11 @@ app.post('/api/auth/login', async (req, res) => {
       },
       body: JSON.stringify({ packageName, mobileNumber, pin }),
     });
-
     const data = await response.json();
     if (!response.ok) return res.status(response.status).json(data);
-
     console.log('✅ Login successful');
     res.json(data);
   } catch (error) {
-    console.error('❌ Login error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -430,121 +149,36 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/refresh', async (req, res) => {
   try {
     const refreshToken = req.headers['authorization'];
-
-    console.log('🔄 Refresh request received');
-    console.log('🔑 Token preview:', refreshToken?.substring(0, 30) + '...');
-
+    console.log('🔄 Refresh request, token preview:', refreshToken?.substring(0, 30) + '...');
     const url = `${process.env.OMNEA_BASE_URL}chips/auth/login/refresh?version=1.0`;
-
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
         'marketplaceKeyId': MARKETPLACE_KEY_ID,
-        'Authorization': `Bearer ${refreshToken}`, // ← add Bearer prefix
+        'Authorization': `Bearer ${refreshToken}`,
       },
     });
-
-    console.log('📥 Omnea response status:', response.status);
-
     const text = await response.text();
-    console.log('📥 Omnea raw response:', text.substring(0, 200));
-
     try {
       const data = JSON.parse(text);
-      if (!response.ok) {
-        console.error('❌ Omnea error response:', data);
-        return res.status(response.status).json(data);
-      }
-      console.log('✅ Refresh successful, token preview:', data.jwttoken?.substring(0, 30) + '...');
+      if (!response.ok) return res.status(response.status).json(data);
+      console.log('✅ Refresh successful');
       res.json(data);
     } catch {
-      console.error('❌ Failed to parse Omnea response as JSON:', text);
       res.status(500).json({ error: 'Invalid JSON from Omnea', raw: text });
     }
   } catch (error) {
-    console.error('❌ Refresh error:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
-// GET /api/eft/funding/fees
-app.get('/api/eft/funding/fees', async (req, res) => {
-  try {
-    const { amount, version } = req.query;
-    const authToken = req.headers['authorization'];
-
-    console.log('💰 EFT fees request:', { amount });
-
-    const url = `${process.env.OMNEA_BASE_URL}chips/money/eft/funding/fees?version=${version || '1.0'}&amount=${amount}`;
-
-    const resp = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'marketplaceKeyId': MARKETPLACE_KEY_ID,
-        'Authorization': `Bearer ${authToken}`,
-      },
-    });
-
-    const text = await resp.text();
-    console.log('📥 EFT fees response status:', resp.status);
-    console.log('💰 EFT fees raw response:', text); // ← add this
-    try {
-      res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      res.status(resp.status).send(text);
-    }
-  } catch (err) {
-    console.error('❌ EFT fees error:', err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// POST /api/eft/funding/deposit (paypump deposit)
-app.post('/api/eft/deposit', async (req, res) => {
-  try {
-    const authToken = req.headers['authorization'];
-    console.log('💳 Paypump deposit request:', { amount: req.body.amount, accountUuid: req.body.accountUuid });
-
-    const url = `${process.env.OMNEA_BASE_URL}chips/money/eft/payments/paypump/deposit`;
-
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'marketplaceKeyId': MARKETPLACE_KEY_ID,
-        'Authorization': `Bearer ${authToken}`,
-      },
-      body: JSON.stringify(req.body),
-    });
-
-    const text = await resp.text();
-    console.log('📥 Paypump deposit response status:', resp.status);
-    console.log('📥 Paypump deposit response body:', text.substring(0, 500));
-
-    try {
-      res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      res.status(resp.status).send(text);
-    }
-  } catch (err) {
-    console.error('❌ Paypump deposit error:', err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// GET /api/eft/funding/:uuid  (get EFT transaction details)
-app.get('/api/eft/funding/:uuid', async (req, res) => {
+// ── Accounts ──────────────────────────────────────────────────────────────────
+app.get('/api/accounts/:uuid', async (req, res) => {
   try {
     const { uuid } = req.params;
     const authToken = req.headers['authorization'];
-
-    console.log('🔍 EFT transaction details request:', { uuid });
-
-    const url = `${process.env.OMNEA_BASE_URL}chips/money/eft/funding/${uuid}?version=1.0`;
-
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/accounts/${uuid}?version=1.0`;
     const resp = await fetch(url, {
       method: 'GET',
       headers: {
@@ -553,105 +187,21 @@ app.get('/api/eft/funding/:uuid', async (req, res) => {
         'Authorization': `Bearer ${authToken}`,
       },
     });
-
     const text = await resp.text();
-    console.log('📥 EFT transaction response status:', resp.status);
-    try {
-      res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      res.status(resp.status).send(text);
-    }
+    console.log('📥 Account response status:', resp.status);
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
   } catch (err) {
-    console.error('❌ EFT transaction details error:', err);
-    res.status(500).json({ error: String(err) });
+    res.status(500).json({ error: 'Proxy failed', detail: String(err) });
   }
 });
 
-// POST /api/payments/qr — retrieve QR code details
-app.post('/api/payments/qr', async (req, res) => {
-  try {
-    const { codeQR } = req.body;
-    console.log('🔍 QR code lookup:', { codeQR });
-
-    const url = `${process.env.OMNEA_BASE_URL}chips/money/payments/qr`;
-
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'marketplaceKeyId': MARKETPLACE_KEY_ID,
-      },
-      body: JSON.stringify({ codeQR }),
-    });
-
-    const text = await resp.text();
-    console.log('📥 QR code response status:', resp.status);
-    console.log('📥 QR code response body:', text);
-
-    try {
-      res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      res.status(resp.status).send(text);
-    }
-  } catch (err) {
-    console.error('❌ QR code lookup error:', err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// POST /api/payments/qr/pay — pay via QR code
-app.post('/api/payments/qr/pay', async (req, res) => {
-  try {
-    const authToken = req.headers['authorization'];
-    console.log('💳 QR payment request:', { amount: req.body.amount, payerAccountUuid: req.body.payerAccountUuid });
-
-    const url = `${process.env.OMNEA_BASE_URL}chips/money/payments/qr/pay`;
-
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'marketplaceKeyId': MARKETPLACE_KEY_ID,
-        'Authorization': `Bearer ${authToken}`,
-      },
-      body: JSON.stringify(req.body),
-    });
-
-    const text = await resp.text();
-    console.log('📥 QR payment response status:', resp.status);
-    console.log('📥 QR payment response body:', text);
-
-    try {
-      res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      res.status(resp.status).send(text);
-    }
-  } catch (err) {
-    console.error('❌ QR payment error:', err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
-// PATCH /api/accounts/:uuid — adjust account limits
 app.patch('/api/accounts/:uuid', async (req, res) => {
   try {
     const { uuid } = req.params;
     const authToken = req.headers['authorization'];
-
-    console.log('⚙️ Account limit update request:', { uuid, body: req.body });
-
-    if (!authToken) {
-      return res.status(401).json({ error: 'Authorization token required' });
-    }
-
-    // req.body should be a JSON Patch array:
-    // [{ "op": "replace", "path": "/approveLimitAmount", "value": 500 }]
+    if (!authToken) return res.status(401).json({ error: 'Authorization token required' });
     const apiUrl = `${process.env.OMNEA_BASE_URL}chips/money/accounts/${uuid}`;
-    console.log('📡 Patching account:', apiUrl);
-    console.log('📦 Patch body:', JSON.stringify(req.body));
-
     const resp = await fetch(apiUrl, {
       method: 'PATCH',
       headers: {
@@ -662,27 +212,258 @@ app.patch('/api/accounts/:uuid', async (req, res) => {
       },
       body: JSON.stringify(req.body),
     });
-
-    console.log('📥 Account patch response status:', resp.status);
     const text = await resp.text();
-    console.log('📥 Account patch response body:', text.substring(0, 500));
-
-    try {
-      res.status(resp.status).json(JSON.parse(text));
-    } catch {
-      res.status(resp.status).send(text);
-    }
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
   } catch (err) {
-    console.error('❌ Account patch error:', err.message);
     res.status(500).json({ error: 'Proxy failed', detail: String(err) });
   }
 });
 
-app.post('/api/payments/requests/multi', async (req, res) => {
+// ── Transactions ──────────────────────────────────────────────────────────────
+app.get("/api/transactions", async (req, res) => {
+  try {
+    const { accountUuid, version } = req.query;
+    const authToken = req.headers['authorization'];
+    if (!accountUuid) return res.status(400).json({ error: "accountUuid is required" });
+    if (!authToken) return res.status(401).json({ error: "Authorization token required" });
+
+    const url = new URL("chips/money/transactions", process.env.OMNEA_BASE_URL);
+    url.searchParams.set("accountUuid", accountUuid);
+    if (version) url.searchParams.set("version", version);
+
+    console.log("📡 Fetching transactions:", url.toString());
+    const resp = await fetch(url.toString(), {
+      method: "GET",
+      headers: {
+        'Accept': "application/json",
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': `Bearer ${authToken}`,
+      }
+    });
+    const text = await resp.text();
+    console.log('📥 Transactions response status:', resp.status);
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: "Proxy failed", detail: String(err) });
+  }
+});
+
+// ── QR Payments ───────────────────────────────────────────────────────────────
+
+// POST /api/payments/qr — look up QR token details (no auth needed)
+app.post('/api/payments/qr', async (req, res) => {
+  try {
+    const { codeQR } = req.body;
+    console.log('🔍 QR code lookup:', { codeQR });
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/payments/qr`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+      },
+      body: JSON.stringify({ codeQR }),
+    });
+    const text = await resp.text();
+    console.log('📥 QR lookup status:', resp.status, text);
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// POST /api/payments/qr/pay — execute the QR payment
+// The Omnea API requires the JWT both as Authorization header AND in the request body
+app.post('/api/payments/qr/pay', async (req, res) => {
+  try {
+    const authToken = req.headers['authorization']; // raw JWT from client (no "Bearer " prefix)
+
+    // The raw JWT goes in the body; Omnea needs "Bearer <jwt>" in the header
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, ''); // safe-strip in case prefix exists
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken; // always "Bearer <jwt>"
+
+    console.log('💳 QR Pay request:', {
+      amount: req.body.amount,
+      payerAccountUuid: req.body.payerAccountUuid,
+      payeeAccountUuid: req.body.payeeAccountUuid,
+      requestId: req.body.requestId,
+      tokenId: req.body.tokenId,
+      jwtInjected: !!rawJwt,
+    });
+
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/payments/qr/pay`;
+
+    // Inject the raw jwt into the body — Omnea requires it both in the header AND body
+    const bodyWithJwt = {
+      ...req.body,
+      jwt: rawJwt,
+    };
+
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,  // always "Bearer <jwt>" ✅
+      },
+      body: JSON.stringify(bodyWithJwt),
+    });
+
+    const text = await resp.text();
+    console.log('📥 QR Pay response status:', resp.status);
+    console.log('📥 QR Pay response body:', text);
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    console.error('❌ QR Pay error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// ── ATM Cash Send ─────────────────────────────────────────────────────────────
+app.post('/api/chips/money/cashsends/atm', async (req, res) => {
   try {
     const authToken = req.headers['authorization'];
-    const url = `${process.env.OMNEA_BASE_URL}chips/money/payments/requests/multi?version=1.0`;
+    const apiUrl = `${process.env.OMNEA_BASE_URL}chips/money/cashsends/atm`;
+    const resp = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify(req.body),
+    });
+    const text = await resp.text();
+    console.log('📥 ATM Cash Send status:', resp.status);
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
+// ── EFT ──────────────────────────────────────────────────────────────────────
+app.get('/api/eft/funding/fees', async (req, res) => {
+  try {
+    const { amount, version } = req.query;
+    const authToken = req.headers['authorization'];
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/eft/funding/fees?version=${version || '1.0'}&amount=${amount}`;
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': `Bearer ${authToken}`,
+      },
+    });
+    const text = await resp.text();
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+app.post('/api/eft/deposit', async (req, res) => {
+  try {
+    const authToken = req.headers['authorization'];
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/eft/payments/paypump/deposit`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify(req.body),
+    });
+    const text = await resp.text();
+    console.log('📥 Paypump deposit status:', resp.status);
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+app.get('/api/eft/funding/:uuid', async (req, res) => {
+  try {
+    const { uuid } = req.params;
+    const authToken = req.headers['authorization'];
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/eft/funding/${uuid}?version=1.0`;
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': `Bearer ${authToken}`,
+      },
+    });
+    const text = await resp.text();
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// ── EFT Payment (bank transfer out) ──────────────────────────────────────────
+app.post('/api/eft/payment', async (req, res) => {
+  try {
+    const {
+      amount, payerRefInfo, branchCode, accountName,
+      accountNumber, bankRefInfo, bankCode, bankAccountType, bankPaymentMethodType
+    } = req.body;
+
+    console.log('=== EFT Payment Request ===', { amount, accountNumber });
+
+    const apiUrl = `${process.env.OMNEA_BASE_URL}chips/money/eft/payments`;
+    const requestBody = {
+      amount,
+      payerAccountUuid: process.env.AccountUuid,
+      payerRefInfo,
+      branchCode,
+      accountName,
+      accountNumber,
+      bankRefInfo,
+      bankCode,
+      bankAccountType,
+      bankPaymentMethodType,
+    };
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': process.env.Authorization,
+        'Content-Type': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+    console.log('📥 EFT Payment status:', response.status);
+
+    if (!response.ok) return res.status(response.status).json({ error: data.message || 'EFT payment failed', details: data });
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
+// ── Multi-Payment ─────────────────────────────────────────────────────────────
+app.post('/api/payments/requests/multi', async (req, res) => {
+  try {
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/payments/requests/multi?version=1.0`;
     const resp = await fetch(url, {
       method: 'POST',
       headers: {
@@ -692,9 +473,7 @@ app.post('/api/payments/requests/multi', async (req, res) => {
       },
       body: JSON.stringify(req.body),
     });
-
     const text = await resp.text();
-    console.log('📥 Payment request response:', resp.status, text.substring(0, 300));
     try { res.status(resp.status).json(JSON.parse(text)); }
     catch { res.status(resp.status).send(text); }
   } catch (err) {
@@ -702,7 +481,160 @@ app.post('/api/payments/requests/multi', async (req, res) => {
   }
 });
 
-// Start server
+app.post('/api/payments/purchases/multi-payments', async (req, res) => {
+  try {
+    const authToken = req.headers['authorization'];
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/payments/purchases/multi-payments`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': authToken,
+      },
+      body: JSON.stringify(req.body),
+    });
+    const text = await resp.text();
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// =============================================================================
+// SAVINGS ROUTES — add these to server.js before app.listen()
+// Base path: fintech/iaccount/savings (same host, different path from chips/money)
+// =============================================================================
+
+// GET /api/savings/profile/:accountUuid — get savings profile
+app.get('/api/savings/profile/:accountUuid', async (req, res) => {
+  try {
+    const { accountUuid } = req.params;
+    const authToken = req.headers['authorization'];
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, '');
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken;
+
+    console.log('💰 GET savings profile:', { accountUuid });
+
+    const url = `${process.env.OMNEA_BASE_URL}fintech/iaccount/savings/profile/${accountUuid}?version=1.0`;
+
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,
+      },
+    });
+
+    const text = await resp.text();
+    console.log('📥 Savings profile status:', resp.status, text.substring(0, 200));
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    console.error('❌ Savings profile error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// PATCH /api/savings/profile/:accountUuid — enable/configure savings
+app.patch('/api/savings/profile/:accountUuid', async (req, res) => {
+  try {
+    const { accountUuid } = req.params;
+    const authToken = req.headers['authorization'];
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, '');
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken;
+
+    console.log('💰 PATCH savings profile:', { accountUuid, body: req.body });
+
+    const url = `${process.env.OMNEA_BASE_URL}fintech/iaccount/savings/profile/${accountUuid}?version=1.0`;
+
+    const resp = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json-patch+json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,
+      },
+      body: JSON.stringify(req.body), // JSON Patch array
+    });
+
+    const text = await resp.text();
+    console.log('📥 Savings patch status:', resp.status, text.substring(0, 200));
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    console.error('❌ Savings patch error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// GET /api/savings/detail/:accountUuid — get savings detail
+app.get('/api/savings/detail/:accountUuid', async (req, res) => {
+  try {
+    const { accountUuid } = req.params;
+    const authToken = req.headers['authorization'];
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, '');
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken;
+
+    console.log('💰 GET savings detail:', { accountUuid });
+
+    const url = `${process.env.OMNEA_BASE_URL}fintech/iaccount/savings/detail/${accountUuid}?version=1.0`;
+
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,
+      },
+    });
+
+    const text = await resp.text();
+    console.log('📥 Savings detail status:', resp.status, text.substring(0, 200));
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    console.error('❌ Savings detail error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// DELETE /api/savings/profile/:accountUuid/clear — delete/reset savings profile
+app.delete('/api/savings/profile/:accountUuid/clear', async (req, res) => {
+  try {
+    const { accountUuid } = req.params;
+    const authToken = req.headers['authorization'];
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, '');
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken;
+
+    console.log('💰 DELETE savings profile:', { accountUuid });
+
+    const url = `${process.env.OMNEA_BASE_URL}fintech/iaccount/savings/profile/${accountUuid}/clear?version=1.0`;
+
+    const resp = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,
+      },
+    });
+
+    const text = await resp.text();
+    console.log('📥 Savings delete status:', resp.status);
+    try { res.status(resp.status).json(text ? JSON.parse(text) : { success: true }); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    console.error('❌ Savings delete error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`✅ Proxy server running on http://localhost:${PORT}`);
   console.log(`📋 Routes:`);
@@ -715,15 +647,18 @@ app.listen(PORT, () => {
   console.log(`   POST /api/auth/pin`);
   console.log(`   GET  /api/auth/refresh`);
   console.log(`   GET  /api/accounts/:uuid`);
+  console.log(`   PATCH /api/accounts/:uuid`);
   console.log(`   GET  /api/transactions`);
-  console.log(`   POST /api/chips/money/cashsend/atm`);
-  console.log(`   POST /api/eft/payment`);
-  console.log(`   POST /api/payments/qr/pay`);
+  console.log(`   POST /api/chips/money/cashsends/atm`);
   console.log(`   GET  /api/eft/funding/fees`);
-  console.log(`   POST /api/eft/funding`);
+  console.log(`   POST /api/eft/deposit`);
   console.log(`   GET  /api/eft/funding/:uuid`);
   console.log(`   POST /api/payments/qr`);
   console.log(`   POST /api/payments/qr/pay`);
   console.log(`   POST /api/payments/requests/multi`);
-  console.log(`   PATCH /api/accounts/:uuid`);
+  console.log(`   POST /api/payments/purchases/multi-payments`);
+  console.log(`   GET  /api/savings/profile/:accountUuid`);
+  console.log(`   PATCH /api/savings/profile/:accountUuid`);
+  console.log(`   GET  /api/savings/detail/:accountUuid`);
+  console.log(`   DELETE /api/savings/profile/:accountUuid/clear`);
 });
