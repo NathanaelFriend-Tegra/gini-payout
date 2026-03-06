@@ -39,7 +39,10 @@ import QRPayPage from "./pages/QRPayPage";
 import CancelPage from "./pages/CancelPage";
 import ErrorPage from "./pages/PaymentErrorPage";
 import { Home } from "lucide-react";
-import SuccessPage from "./pages/Successpage";
+import SuccessPage from "./pages/SuccessPage";
+import AccountLimitsPage from "./pages/AccountsLimitPage";
+import MultiPaymentForm from "./pages/MutliPaymentForm";
+import SavingsPage from "./pages/SavingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -91,6 +94,9 @@ const App = () => (
                 <Route path="/Success" element={<SuccessPage />} />
                 <Route path="/Cancel" element={<CancelPage />} />
                 <Route path="/Error" element={<ErrorPage />} />
+                <Route path="/EditAccount" element={<AccountLimitsPage />} />
+                <Route path="/MultiPayment" element={<MultiPaymentForm />} />
+                <Route path="/savings" element={<SavingsPage />} />
               </Route>
             </Route>
 

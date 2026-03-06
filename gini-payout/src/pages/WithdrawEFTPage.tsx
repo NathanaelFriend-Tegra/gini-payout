@@ -60,7 +60,7 @@ const WithdrawEFTPage: React.FC = () => {
   const enteredAmount = parseFloat(form.amount) || 0;
   const exceedsBalance = enteredAmount > cashBalance;
 
-  const isValid = 
+  const isValid =
     form.bankName.trim() !== '' &&
     form.accountNumber.trim() !== '' &&
     form.branchCode.trim() !== '' &&
@@ -84,8 +84,8 @@ const WithdrawEFTPage: React.FC = () => {
         </div>
       </div>
 
-      <form 
-        onSubmit={(e) => { e.preventDefault(); setShowConfirm(true); }} 
+      <form
+        onSubmit={(e) => { e.preventDefault(); setShowConfirm(true); }}
         className="space-y-5"
       >
         <p className="text-muted-foreground">
@@ -195,6 +195,23 @@ const WithdrawEFTPage: React.FC = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setShowConfirm(false);
+                setSubmitting(true);
+                try {
+                  await new Promise(resolve => setTimeout(resolve, 1500));
+                  toast.success('Withdrawal submitted successfully');
+                  navigate(-1);
+                } catch (error) {
+                  toast.error('Withdrawal failed. Please try again.');
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

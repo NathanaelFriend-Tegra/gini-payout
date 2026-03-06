@@ -6,7 +6,7 @@
 
 const OMNEA_BASE_URL = import.meta.env.VITE_OMNEA_BASE_URL || 'https://apim-sbox.omnea.co.za/sandbox/';
 const MARKETPLACE_KEY_ID = import.meta.env.VITE_OMNEA_MARKETPLACE_KEY_ID || '';
-const PACKAGE_NAME = 'co.omnea.ginipayout'; // Your app package name
+const PACKAGE_NAME = 'co.omnea.ginipayout';
 
 // ==============================================
 // TOKEN MANAGEMENT
@@ -16,7 +16,6 @@ const getAuthToken = (): string | null => {
   return localStorage.getItem('omnea_access_token');
 };
 
-// Token management additions
 const getRefreshToken = (): string | null => {
   return localStorage.getItem('omnea_refresh_token');
 };
@@ -41,7 +40,7 @@ const setUserData = (userData: any): void => {
 export const clearTokens = (): void => {
   localStorage.removeItem('omnea_access_token');
   localStorage.removeItem('omnea_user_data');
-  localStorage.removeItem('omnea_refresh_token')
+  localStorage.removeItem('omnea_refresh_token');
 };
 
 // ==============================================
@@ -64,12 +63,10 @@ async function apiCall<T>(
     'Content-Type': 'application/json',
   };
 
-  // Add marketplace key first
   if (!skipMarketplaceKey) {
     headers['marketplaceKeyId'] = MARKETPLACE_KEY_ID;
   }
 
-  // Add auth token if required (BEFORE spreading custom headers so custom headers win)
   if (requiresAuth) {
     const token = getAuthToken();
     if (token) {
@@ -79,16 +76,13 @@ async function apiCall<T>(
     }
   }
 
-  // Spread custom headers LAST so they override everything above
   const finalHeaders = {
     ...headers,
-    ...fetchOptions.headers,  // ← custom headers always win
+    ...fetchOptions.headers,
   };
-  // Point all calls at your local proxy
-  const OMNEA_BASE_URL = import.meta.env.VITE_PROXY_URL || 'http://localhost:3001';
 
-  // In apiCall, change the url line to:
-  const url = `${OMNEA_BASE_URL}/api/${endpoint}`;
+  const PROXY_URL = import.meta.env.VITE_PROXY_URL || 'http://localhost:3001';
+  const url = `${PROXY_URL}/api/${endpoint}`;
 
   console.log('API Call:', {
     method: fetchOptions.method || 'GET',
@@ -127,15 +121,15 @@ export interface CreateProfileRequest {
   displayName: string;
   email?: string;
   mobileNumber: string;
-  photo?: string; // Base64 selfie
+  photo?: string;
   identity: {
     identityNumber: string;
     firstNames: string;
     surname: string;
     genderType: 'MALE' | 'FEMALE' | 'OTHER';
     countryOfBirth: string;
-    dateOfBirth: string; // Format: YYYY-MM-DD
-    photo?: string; // Base64 ID card
+    dateOfBirth: string; // YYYY-MM-DD
+    photo?: string;
   };
 }
 
@@ -197,7 +191,7 @@ export interface AccountDetailsResponse {
   lastModified: string;
 }
 
-// ── Paypump Deposit ──────────────────────────────────────────────────────
+// ── Paypump Deposit ───────────────────────────────────────────────────────────
 
 export interface PaypumpDepositRequest {
   accountName: string;
@@ -231,13 +225,13 @@ export interface PaypumpDepositResponse {
   token: string;
 }
 
-// ── EFT Payment Calculations ──────────────────────────────────────────────────────
+// ── EFT ──────────────────────────────────────────────────────────────────────
 
 export interface EftFeesResponse {
-  externalAmount: number;  // fee charged to customer
-  internalAmount: number;  // internal fee
-  vatAmount: number;       // VAT on the fee
-  totalAmount: number;     // total including fees + VAT
+  externalAmount: number;
+  internalAmount: number;
+  vatAmount: number;
+  totalAmount: number;
   apimStatus: {
     marketplaceCode: number;
     marketplaceMsg: string;
@@ -250,7 +244,7 @@ export interface EftFeesResponse {
   };
 }
 
-// ─── sendATMCash  ───────────
+// ── ATM Cash Send ─────────────────────────────────────────────────────────────
 
 export interface ATMCashSendRequest {
   requestId: string;
@@ -273,7 +267,7 @@ export interface ATMCashSendResponse {
   };
 }
 
-// ── QR Code Payments ──────────────────────────────────────────────────────
+// ── QR Code Payments ──────────────────────────────────────────────────────────
 
 export interface ApimStatus {
   marketplaceCode: number;
@@ -286,72 +280,108 @@ export interface ApimStatus {
   marketplaceMocked: boolean;
 }
 
+// Shape returned by POST /payments/qr (token lookup) — matches real API response
 export interface QrCodeResponse {
   requestId: string;
-  paymentType: string;
-  feeSponsorType: string;
+  tokenId: string;
+  transactionId: string;
+  systemRefInfo: string;
+  amount: number;
+  gratuityAmount?: number;
+  description: string;
+  feeSponsorType: string;    // e.g. "PAYEE"
+  paymentType: string;       // e.g. "DEFAULT"
   payeeAccountUuid: string;
   payeeRefInfo: string;
   payeeSiteName: string;
-  siteName: string;
-  tokenId: string;
-  description: string;
-  amount: number;
-  gratuityAmount: number;
-  transactionId: string;
+  payeeSiteRefInfo: string;
+  partialPayment: boolean;
   apimStatus: ApimStatus;
 }
 
+// Payload for POST /payments/qr/pay — matches the working cURL exactly
 export interface QrPayRequest {
-  feeSponsorType: string;
-  paymentType: string;
-  description: string;
+  feeSponsorType: string;       // from QR response
+  paymentType: string;          // from QR response
+  description: string;          // from QR response
   amount: number;
-  gratuityAmount: number;
-  payeeAccountUuid: string;
-  payeeRefInfo: string;
-  payeeSiteName: string;
-  siteName: string;
-  payerAccountUuid: string;
+  gratuityAmount?: number;
+  payeeAccountUuid: string;     // from QR response
+  payeeRefInfo: string;         // from QR response
+  payeeSiteName: string;        // from QR response
+  siteName?: string;
+  payeeDescription?: string;
+  payerDescription?: string;
+  payerAccountUuid: string;     // logged-in user's accountUuid
   payerRefInfo: string;
-  requestId: string;
-  tokenId: string;
+  requestId: string;            // from QR response
+  tokenId: string;              // from QR response — required by API
+  // Note: `jwt` is injected automatically by the proxy server — do NOT send it from the client
+  payerCategory1?: string | number;
+  payerCategory2?: string | number;
+  payerCategory3?: string | number;
 }
 
 export interface QrPayResponse {
-  uuid: string;
-  created: string;
-  createdBy: string;
-  createdByChannelUuid: string;
-  lastModified: string;
-  modifiedBy: string;
-  systemRefInfo: string;
-  payeeAccountUuid: string;
-  payeeRefInfo: string;
-  payeeMessage: string;
-  payeeSiteRefInfo: string;
-  payeeCategory1: string;
-  payeeCategory2: string;
-  payeeCategory3: string;
-  payeeSiteName: string;
-  siteName: string;
-  payerAccountUuid: string;
-  payerRefInfo: string;
-  payerCategory1: string;
-  payerCategory2: string;
-  payerCategory3: string;
-  requestId: string;
-  amount: number;
-  gratuityAmount: number;
-  paymentDate: string;
-  description: string;
-  feeSponsorType: string;
-  paymentType: string;
-  status: string;
+  uuid?: string;
+  status?: string;
+  requestId?: string;
+  transactionId?: string;
+  amount?: number;
   apimStatus: ApimStatus;
 }
 
-// ─── Add these to /src/lib/api.ts ────────────────────────────────────────────
+// ── Multi-Payment (Cart Checkout) ─────────────────────────────────────────────
+
+export interface MultiPaymentItem {
+  payeeAccountUuid: string;
+  payeeRefInfo: string;
+  payerCategory1: string;
+  payerCategory2: string;
+  payerCategory3: string;
+  payerRefInfo: string;
+  siteRefInfo: string;
+  siteName: string;
+  amount: number;
+  gratuityAmount: number;
+}
+
+export interface MultiPayRequest {
+  requestId: string;
+  description: string;
+  payerAccountUuid: string;
+  payments: MultiPaymentItem[];
+  noOfInstructions: number;
+}
+
+export interface MultiPaymentItemResult {
+  payeeAccountUuid: string;
+  payeeRefInfo: string;
+  payerCategory1: string;
+  payerCategory2: string;
+  payerCategory3: string;
+  payerRefInfo: string;
+  siteRefInfo: string;
+  siteName: string;
+  amount: number;
+  gratuityAmount: number;
+  status: string;
+  transactionId: string;
+}
+
+export interface MultiPayResponse {
+  uuid: string;
+  requestId: string;
+  description: string;
+  payerAccountUuid: string;
+  payments: MultiPaymentItemResult[];
+  noOfInstructions: number;
+  status: string;
+  created: string;
+  apimStatus: ApimStatus;
+}
+
+// ── Account Limits (JSON Patch) ───────────────────────────────────────────────
 
 export type JsonPatchOp = 'replace' | 'add' | 'remove';
 
@@ -373,69 +403,13 @@ export interface UpdateAccountLimitsResponse {
   };
 }
 
-// ==============================================
-// AUTHENTICATION & REGISTRATION APIs
-// ==============================================
+// ── Transactions ──────────────────────────────────────────────────────────────
 
-/**
- * Check if a mobile number is already registered
- */
-export const checkRegistrationStatus = async (
-  mobileNumber: string
-): Promise<RegistrationStatusResponse> => {
-  return apiCall<RegistrationStatusResponse>(
-    `register/status?mobileNumber=${encodeURIComponent(mobileNumber)}&version=1.0`,
-    {
-      method: 'GET',
-      requiresAuth: false,
-    }
-  );
-};
-
-/**
- * Create a new user profile/registration
- */
-export const createProfile = async (
-  profileData: CreateProfileRequest
-): Promise<CreateProfileResponse> => {
-  return apiCall<CreateProfileResponse>(
-    'register/persons?version=1.0',
-    {
-      method: 'POST',
-      requiresAuth: false,
-      body: JSON.stringify(profileData),
-    }
-  );
-};
-
-/**
- * Send OTP to mobile number for verification
- */
-export const sendOTP = async (mobileNumber: string): Promise<SendOTPResponse> => {
-  return apiCall<SendOTPResponse>(
-    `register/mobile/otp?mobileNumber=${encodeURIComponent(mobileNumber)}&version=1.0`,
-    { method: 'GET', requiresAuth: false }
-  );
-};
-
-/**
- * Verify OTP code
- */
-export const verifyOTP = async (data: VerifyOTPRequest): Promise<VerifyOTPResponse> => {
-  return apiCall<VerifyOTPResponse>(
-    `register/mobile/otp?mobileNumber=${encodeURIComponent(data.mobileNumber)}&version=1.0`,
-    { method: 'POST', requiresAuth: false, body: JSON.stringify(data) }
-  );
-};
-
-
-// Rename existing Transaction → OmneaTxn to represent the raw API response
 export interface OmneaTxn {
   id: string;
   amount: number;
   type: string;
   date: string;
-  // optional fields the mapper already defensively handles:
   currency?: string;
   description?: string;
   merchant?: string;
@@ -445,49 +419,78 @@ export interface OmneaTxn {
 }
 
 export interface TransactionHistoryResponse {
-  transactions: OmneaTxn[];
-  total: number;
+  values: OmneaTxn[];
+  pageSize: number;
+  pageNumber: number;
+  totalPages: number;
+  totalElements: number;
+  transactions?: OmneaTxn[]; // fallback alias
 }
 
-export const getTransactionHistory = async (
-  accountUuid: string,
-): Promise<TransactionHistoryResponse> => {
-  return apiCall<TransactionHistoryResponse>(
-    `transactions?accountUuid=${encodeURIComponent(accountUuid)}&version=1.0`,
-    {
-      method: 'GET',
-      requiresAuth: true, // ← pulls stored JWT automatically
-    }
+// ── Savings ─────────────────────────────────────────────────────────────────────
+
+export interface SavingsProfile {
+  accountUuid: string;
+  enabled: boolean;
+  userSavingsBalance: number;          
+  userMonthlySavingsIncrease: number;  
+  apimStatus?: ApimStatus;
+}
+
+export interface SavingsDetail {
+  accountUuid: string;
+  availableBalance: number;       
+  totalWalletBalance: number;
+  monthToDate?: {
+    cashbackReceived?: number;
+    interestEstimate?: number;
+  };
+  apimStatus?: ApimStatus;
+}
+
+export interface SavingsPatchOperation {
+  op: 'replace' | 'add' | 'remove';
+  path: '/enabled' | '/userSavingsBalance' | '/userMonthlySavingsIncrease';
+  value: boolean | number;
+}
+
+
+// ==============================================
+// AUTHENTICATION & REGISTRATION APIs
+// ==============================================
+
+export const checkRegistrationStatus = async (
+  mobileNumber: string
+): Promise<RegistrationStatusResponse> => {
+  return apiCall<RegistrationStatusResponse>(
+    `register/status?mobileNumber=${encodeURIComponent(mobileNumber)}&version=1.0`,
+    { method: 'GET', requiresAuth: false }
   );
 };
 
-//Send cash API
-export const sendATMCash = async (
-  data: ATMCashSendRequest
-): Promise<ATMCashSendResponse> => {
-  return apiCall<ATMCashSendResponse>(
-    'chips/money/cashsends/atm',   // ← matches new proxy route exactly
-    {
-      method: 'POST',
-      requiresAuth: true,
-      body: JSON.stringify(data),
-    }
+export const createProfile = async (
+  profileData: CreateProfileRequest
+): Promise<CreateProfileResponse> => {
+  return apiCall<CreateProfileResponse>(
+    'register/persons?version=1.0',
+    { method: 'POST', requiresAuth: false, body: JSON.stringify(profileData) }
   );
 };
 
-//QR CODE PLACE HOLDER
-export const getQrDetails = async (qrCode: string): Promise<any> => {
-  return apiCall<any>(
-    `payments/qr/${qrCode}?version=1.0`,
-    {
-      method: 'GET',
-      requiresAuth: true,
-    }
+export const sendOTP = async (mobileNumber: string): Promise<SendOTPResponse> => {
+  return apiCall<SendOTPResponse>(
+    `register/mobile/otp?mobileNumber=${encodeURIComponent(mobileNumber)}&version=1.0`,
+    { method: 'GET', requiresAuth: false }
   );
 };
-/**
- * Login with mobile number and PIN
- */
+
+export const verifyOTP = async (data: VerifyOTPRequest): Promise<VerifyOTPResponse> => {
+  return apiCall<VerifyOTPResponse>(
+    `register/mobile/otp?mobileNumber=${encodeURIComponent(data.mobileNumber)}&version=1.0`,
+    { method: 'POST', requiresAuth: false, body: JSON.stringify(data) }
+  );
+};
+
 export const login = async (mobileNumber: string, pin: string): Promise<any> => {
   console.log('🔐 Step 1: Attempting login for:', mobileNumber);
 
@@ -501,18 +504,15 @@ export const login = async (mobileNumber: string, pin: string): Promise<any> => 
   );
 
   console.log('✅ Step 1 complete: Login successful');
-
-
   console.log('🔄 Step 2: Attempting token refresh...');
+
   const refreshData = await apiCall<any>(
     'auth/refresh',
     {
       method: 'GET',
       requiresAuth: false,
       skipMarketplaceKey: false,
-      headers: {
-        'Authorization': loginData.jwtRefresh,
-      },
+      headers: { 'Authorization': loginData.jwtRefresh },
     }
   );
 
@@ -530,54 +530,59 @@ export const login = async (mobileNumber: string, pin: string): Promise<any> => 
     refreshToken: refreshData.jwtRefresh,
   });
 
-  console.log('✅ Step 3 complete: User data stored', {
-    accountUuid: loginData.memberData.accountUuid,
-    displayName: loginData.memberData.displayName,
-  });
-
+  console.log('✅ Step 3 complete: User data stored');
   return refreshData;
 };
 
-
-/**
- * Get account details for logged-in user
- */
 export const getAccountDetails = async (accountUuid?: string): Promise<AccountDetailsResponse> => {
   const userData = getUserData();
   const uuid = accountUuid || userData?.accountUuid;
-
   if (!uuid) throw new Error('No account UUID available');
-
   return apiCall<AccountDetailsResponse>(
     `accounts/${uuid}?version=1.0`,
-    {
-      method: 'GET',
-      requiresAuth: true,
-    }
+    { method: 'GET', requiresAuth: true }
   );
 };
 
-/**
- * Logout user
- */
 export const logout = (): void => {
   clearTokens();
   window.location.href = '/login';
 };
 
-
-
-/**
- * Get stored user data
- */
 export const getCurrentUser = (): any => {
   return getUserData();
 };
 
+// ==============================================
+// TRANSACTION APIs
+// ==============================================
 
-// ── EFT Funding API calls ──────────────────────────────────────────────────
+export const getTransactionHistory = async (
+  accountUuid: string
+): Promise<TransactionHistoryResponse> => {
+  return apiCall<TransactionHistoryResponse>(
+    `transactions?accountUuid=${encodeURIComponent(accountUuid)}&version=1.0`,
+    { method: 'GET', requiresAuth: true }
+  );
+};
 
-// api.ts - make sure it looks like this
+// ==============================================
+// ATM CASH SEND
+// ==============================================
+
+export const sendATMCash = async (
+  data: ATMCashSendRequest
+): Promise<ATMCashSendResponse> => {
+  return apiCall<ATMCashSendResponse>(
+    'chips/money/cashsends/atm',
+    { method: 'POST', requiresAuth: true, body: JSON.stringify(data) }
+  );
+};
+
+// ==============================================
+// EFT FUNDING APIs
+// ==============================================
+
 export const getEftFees = async (amount: number): Promise<EftFeesResponse> => {
   return apiCall<EftFeesResponse>(
     `eft/funding/fees?amount=${amount}&version=1.0`,
@@ -590,54 +595,44 @@ export const createPaypumpDeposit = async (
 ): Promise<PaypumpDepositResponse> => {
   return apiCall<PaypumpDepositResponse>(
     'eft/deposit',
-    {
-      method: 'POST',
-      requiresAuth: true,
-      body: JSON.stringify(data),
-    }
+    { method: 'POST', requiresAuth: true, body: JSON.stringify(data) }
   );
 };
-
 
 export const getEftTransactionDetails = async (
   uuid: string
 ): Promise<PaypumpDepositResponse> => {
   return apiCall<PaypumpDepositResponse>(
     `eft/funding/${uuid}?version=1.0`,
-    {
-      method: 'GET',
-      requiresAuth: true,
-    }
+    { method: 'GET', requiresAuth: true }
   );
 };
 
-// ── QR Codde Payment API calls ──────────────────────────────────────────────────
+// ==============================================
+// QR CODE PAYMENT APIs
+// ==============================================
+
+// POST /payments/qr — look up token details (no auth required)
 export const getQrCode = async (codeQR: string): Promise<QrCodeResponse> => {
   return apiCall<QrCodeResponse>(
     'payments/qr',
-    {
-      method: 'POST',
-      requiresAuth: false,
-      body: JSON.stringify({ codeQR }),
-    }
+    { method: 'POST', requiresAuth: false, body: JSON.stringify({ codeQR }) }
   );
 };
 
+// POST /payments/qr/pay — execute the payment (auth required)
+// The proxy server automatically injects the `jwt` field into the request body
 export const payQrCode = async (data: QrPayRequest): Promise<QrPayResponse> => {
   return apiCall<QrPayResponse>(
-    'payments/qr/pay',
-    {
-      method: 'POST',
-      requiresAuth: true,
-      body: JSON.stringify(data),
-    }
+    'payments/qr/pay',   // ✅ corrected from 'payments/purchases'
+    { method: 'POST', requiresAuth: true, body: JSON.stringify(data) }
   );
 };
 
-/**
- * Adjust account limits via JSON Patch
- * e.g. updateAccountLimits(uuid, [{ op: 'replace', path: '/approveLimitAmount', value: 500 }])
- */
+// ==============================================
+// ACCOUNT LIMITS
+// ==============================================
+
 export const updateAccountLimits = async (
   accountUuid: string,
   patches: JsonPatchOperation[]
@@ -650,5 +645,53 @@ export const updateAccountLimits = async (
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(patches),
     }
+  );
+};
+
+
+// ── Savings ─────────────────────────────────────────────────────────────
+
+/** GET /savings/profile/:accountUuid — fetch current savings profile */
+export const getSavingsProfile = async (
+  accountUuid: string
+): Promise<SavingsProfile> => {
+  return apiCall<SavingsProfile>(
+    `savings/profile/${accountUuid}`,
+    { method: 'GET', requiresAuth: true }
+  );
+};
+
+export const updateSavingsProfile = async (
+  accountUuid: string,
+  patches: SavingsPatchOperation[]
+): Promise<SavingsProfile> => {
+  return apiCall<SavingsProfile>(
+    `savings/profile/${accountUuid}`,
+    {
+      method: 'PATCH',
+      requiresAuth: true,
+      headers: { 'Content-Type': 'application/json-patch+json' },
+      body: JSON.stringify(patches),
+    }
+  );
+};
+
+/** GET /savings/detail/:accountUuid — fetch live savings detail */
+export const getSavingsDetail = async (
+  accountUuid: string
+): Promise<SavingsDetail> => {
+  return apiCall<SavingsDetail>(
+    `savings/detail/${accountUuid}`,
+    { method: 'GET', requiresAuth: true }
+  );
+};
+
+/** DELETE /savings/profile/:accountUuid/clear — reset/delete savings profile */
+export const clearSavingsProfile = async (
+  accountUuid: string
+): Promise<void> => {
+  return apiCall<void>(
+    `savings/profile/${accountUuid}/clear`,
+    { method: 'DELETE', requiresAuth: true }
   );
 };

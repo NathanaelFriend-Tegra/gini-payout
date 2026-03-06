@@ -6,7 +6,7 @@ import { InfoCard } from "@/components/ui/InfoCard";
 import { GiniButton } from "@/components/ui/GiniButton";
 import { TransactionList } from "@/components/ui/TransactionList";
 import { TrustBadge } from "@/components/ui/TrustBadge";
-import { Transaction } from "@/lib/mockData"; // only keeping the type
+import { Transaction } from "@/lib/mockData";
 import { toast } from "sonner";
 
 import { getTransactionHistory, getAccountDetails, getCurrentUser } from "@/lib/api";
@@ -18,8 +18,6 @@ const HomePage: React.FC = () => {
   const [walletRef, setWalletRef] = useState<string | undefined>(undefined);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAll, setShowAll] = useState(false);
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -43,7 +41,6 @@ const HomePage: React.FC = () => {
         console.log('✅ Account details:', accountDetails);
         console.log('✅ Transactions raw response:', txnResponse);
 
-        const available = accountDetails.availableBalanceAmount ?? 0;
         setBalance(
           new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(
             accountDetails.availableBalanceAmount ?? 0
@@ -51,7 +48,9 @@ const HomePage: React.FC = () => {
         );
         setWalletRef(accountDetails.uuid);
 
-        const uiTxns = (txnResponse.transactions ?? []).map(mapApiTxnToUi);
+        // API returns `values`, not `transactions`
+        const raw = (txnResponse as any).values ?? txnResponse.transactions ?? [];
+        const uiTxns = raw.map(mapApiTxnToUi);
         setAllTransactions(uiTxns);
 
       } catch (error) {
@@ -65,15 +64,17 @@ const HomePage: React.FC = () => {
     fetchData();
   }, []);
 
-  const transactionsToShow = useMemo(() => {
-    if (showAll) return allTransactions;
-    return allTransactions.slice(0, 3);
-  }, [allTransactions, showAll]);
+  // Show only the 3 most recent on the home screen
+  const recentTransactions = useMemo(
+    () => allTransactions.slice(0, 3),
+    [allTransactions]
+  );
 
   const actionItems = [
     { label: "Withdraw", to: "/withdraw", icon: "cash" },
     { label: "Deposit", to: "/deposit", icon: "deposit" },
     { label: "Spend", to: "/spend", icon: "shopping" },
+    { label: "Savings", to: "/savings", icon: "savings" },
     { label: "History", to: "/txns", icon: "list" },
     { label: "Support", to: "/support", icon: "chat" },
   ];
@@ -99,15 +100,9 @@ const HomePage: React.FC = () => {
 
       <section>
         <div className="flex items-center justify-between mb-3">
-          <button
-            type="button"
-            onClick={() => setShowAll((v) => !v)}
-            className="text-sm font-medium text-muted-foreground hover:underline"
-            aria-expanded={showAll}
-          >
-            Recent Activity {showAll ? "(show less)" : "(show all)"}
-          </button>
-
+          <h3 className="text-sm font-medium text-muted-foreground">
+            Recent Activity
+          </h3>
           <button
             onClick={() => navigate("/txns")}
             className="text-sm text-primary font-medium hover:underline"
@@ -116,7 +111,7 @@ const HomePage: React.FC = () => {
           </button>
         </div>
 
-        <TransactionList transactions={transactionsToShow} loading={loading} />
+        <TransactionList transactions={recentTransactions} loading={loading} />
       </section>
 
       <section>

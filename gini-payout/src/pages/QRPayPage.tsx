@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Html5Qrcode } from "html5-qrcode";
-import { getQrCode, payQrCode, getCurrentUser } from "@/lib/api";
+import { getQrCode, payQrCode, getCurrentUser, QrCodeResponse, QrPayRequest } from "@/lib/api";
 import { toast } from "sonner";
 
 const FALLBACK_TOKEN = "1032563721";
@@ -12,7 +12,7 @@ const QRPayPage: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>("scan");
   const [manualCode, setManualCode] = useState("");
-  const [qrDetails, setQrDetails] = useState<any>(null);
+  const [qrDetails, setQrDetails] = useState<QrCodeResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -32,39 +32,32 @@ const QRPayPage: React.FC = () => {
     setCameraError(null);
     setCameraActive(true);
     setScannerReady(false);
-
     setTimeout(async () => {
       try {
         const scanner = new Html5Qrcode(scannerDivId);
         scannerRef.current = scanner;
-
         await scanner.start(
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 220, height: 220 } },
           async (decodedText) => {
-            // Extract tokenId from URL if it's a full URL, otherwise use raw value
             let token = decodedText;
             try {
               const url = new URL(decodedText);
               token = url.searchParams.get("tokenId") || decodedText;
-            } catch {
-              // Not a URL, use as-is
-            }
+            } catch { /* not a URL */ }
             await scanner.stop();
             setCameraActive(false);
             handleLookup(token);
           },
           () => {}
         );
-
         setScannerReady(true);
       } catch (err: any) {
         setCameraActive(false);
-        if (err?.message?.includes("Permission")) {
-          setCameraError("Camera permission denied. Please allow camera access and try again.");
-        } else {
-          setCameraError("Could not start camera. Use manual entry below.");
-        }
+        setCameraError(err?.message?.includes("Permission")
+          ? "Camera permission denied. Please allow camera access and try again."
+          : "Could not start camera. Use manual entry below."
+        );
       }
     }, 150);
   };
@@ -99,28 +92,33 @@ const QRPayPage: React.FC = () => {
       navigate("/login");
       return;
     }
+    if (!qrDetails) return;
 
     setStep("paying");
     try {
-      const primaryPayee = qrDetails.payees?.find((p: any) => p.primary) ?? qrDetails.payees?.[0];
-
-      await payQrCode({
-        feeSponsorType: "PAYER",
-        paymentType: "BULK",
-        description: qrDetails.description ?? "",
-        amount: qrDetails.amount ?? 0,
-        gratuityAmount: 0,
-        payeeAccountUuid: primaryPayee?.accountUuid ?? "",
-        payeeRefInfo: primaryPayee?.refInfo ?? "",
-        payeeSiteName: qrDetails.description ?? "",
-        siteName: qrDetails.description ?? "",
+      // Matches the working cURL exactly.
+      // The proxy server injects `jwt` into the body automatically — don't add it here.
+      const payload: QrPayRequest = {
+        feeSponsorType:   qrDetails.feeSponsorType,
+        paymentType:      qrDetails.paymentType,
+        description:      qrDetails.description,
+        amount:           qrDetails.amount,
+        gratuityAmount:   qrDetails.gratuityAmount ?? 0,
+        payeeAccountUuid: qrDetails.payeeAccountUuid,
+        payeeRefInfo:     qrDetails.payeeRefInfo,
+        payeeSiteName:    qrDetails.payeeSiteName,
+        siteName:         qrDetails.payeeSiteName,
+        payeeDescription: qrDetails.payeeSiteRefInfo,
+        payerDescription: qrDetails.payeeSiteRefInfo,
         payerAccountUuid: user.accountUuid,
-        payerRefInfo: `QR-${Date.now()}`,
-        requestId: qrDetails.requestId,
-        tokenId: qrDetails.tokenId,
-      });
+        payerRefInfo:     qrDetails.payeeSiteRefInfo,
+        requestId:        qrDetails.requestId,
+        tokenId:          qrDetails.tokenId,   // ← required by the API
+      };
 
-      navigate(`/success?amount=${qrDetails.amount}&message=Payment sent successfully.`);
+      console.log('💳 Submitting QR payment:', payload);
+      await payQrCode(payload);
+      navigate(`/Success?amount=${qrDetails.amount}&message=Payment sent successfully.`);
     } catch (err: any) {
       toast.error(err.message || "Payment failed. Please try again.");
       setStep("confirm");
@@ -141,7 +139,6 @@ const QRPayPage: React.FC = () => {
     <div style={styles.page}>
       <div style={styles.bgGlow} />
 
-      {/* Header */}
       <div style={styles.header}>
         <button onClick={handleBack} style={styles.backBtn}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -154,7 +151,6 @@ const QRPayPage: React.FC = () => {
         <div style={{ width: 36 }} />
       </div>
 
-      {/* ── SCAN STEP ── */}
       {step === "scan" && (
         <div style={styles.content}>
           <div style={styles.viewfinderOuter}>
@@ -243,48 +239,29 @@ const QRPayPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── CONFIRM STEP ── */}
       {step === "confirm" && qrDetails && (
         <div style={styles.content}>
           <div style={styles.merchantCard}>
             <div style={styles.merchantAvatar}>
               <span style={styles.merchantInitial}>
-                {(qrDetails.description || "P")[0].toUpperCase()}
+                {(qrDetails.payeeSiteName || qrDetails.description || "P")[0].toUpperCase()}
               </span>
             </div>
-            <p style={styles.merchantName}>{qrDetails.description || "Payment"}</p>
-            <p style={styles.merchantRef}>Token: {qrDetails.tokenId?.slice(0, 16)}...</p>
+            <p style={styles.merchantName}>{qrDetails.payeeSiteName || qrDetails.description || "Payment"}</p>
+            <p style={styles.merchantRef}>Ref: {qrDetails.payeeRefInfo}</p>
             <div style={styles.amountWrap}>
               <span style={styles.amountCurrency}>R</span>
               <span style={styles.amountValue}>{(qrDetails.amount ?? 0).toFixed(2)}</span>
             </div>
           </div>
 
-          {/* Payees breakdown */}
-          {qrDetails.payees?.length > 0 && (
-            <div style={styles.payeesCard}>
-              <p style={styles.payeesTitle}>Payment breakdown</p>
-              {qrDetails.payees.map((payee: any, i: number) => (
-                <div key={i} style={{
-                  ...styles.payeeRow,
-                  borderBottom: i < qrDetails.payees.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none"
-                }}>
-                  <div>
-                    <span style={styles.payeeRef}>{payee.refInfo || "Payment"}</span>
-                    {payee.primary && <span style={styles.primaryBadge}>Primary</span>}
-                    <p style={styles.payeeDesc}>{payee.description || "—"}</p>
-                  </div>
-                  <span style={styles.payeeAmount}>R{(payee.amount ?? 0).toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
           <div style={styles.detailsCard}>
             {[
               { label: "Description", value: qrDetails.description || "—" },
-              { label: "Request ID", value: (qrDetails.requestId?.slice(0, 20) ?? "—") + "..." },
-              { label: "Payees", value: `${qrDetails.payeeAccountUuid}` },
+              { label: "Site Ref",    value: qrDetails.payeeSiteRefInfo || "—" },
+              { label: "Token",       value: qrDetails.tokenId || "—" },
+              { label: "Request ID",  value: qrDetails.requestId || "—" },
+              { label: "Fee Sponsor", value: qrDetails.feeSponsorType || "—" },
             ].map(({ label, value }, i, arr) => (
               <div key={label} style={{
                 ...styles.detailRow,
@@ -305,7 +282,6 @@ const QRPayPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── PAYING STEP ── */}
       {step === "paying" && (
         <div style={styles.payingScreen}>
           <div style={styles.payingSpinner}>
@@ -321,187 +297,66 @@ const QRPayPage: React.FC = () => {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Sora:wght@700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes scanMove { 0% { top: 12%; } 50% { top: 82%; } 100% { top: 12%; } }
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-        #qr-scanner-container video { border-radius: 0 !important; object-fit: cover !important; width: 100% !important; height: 100% !important; }
-        #qr-scanner-container img { display: none !important; }
-        #qr-scanner-container { width: 100% !important; height: 100% !important; }
+        @keyframes scanMove { 0%{top:12%} 50%{top:82%} 100%{top:12%} }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+        #qr-scanner-container video { border-radius:0!important; object-fit:cover!important; width:100%!important; height:100%!important; }
+        #qr-scanner-container img { display:none!important; }
+        #qr-scanner-container { width:100%!important; height:100%!important; }
       `}</style>
     </div>
   );
 };
 
 const styles: Record<string, React.CSSProperties> = {
-  page: {
-    minHeight: "100vh",
-    background: "#0a0a0f",
-    color: "#f0f0f5",
-    display: "flex",
-    flexDirection: "column",
-    fontFamily: "'DM Sans', sans-serif",
-    position: "relative",
-    overflow: "hidden",
-  },
-  bgGlow: {
-    position: "absolute",
-    top: -120, left: "50%",
-    transform: "translateX(-50%)",
-    width: 400, height: 400,
-    borderRadius: "50%",
-    background: "radial-gradient(circle, rgba(124,107,255,0.12) 0%, transparent 70%)",
-    pointerEvents: "none",
-  },
-  header: {
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    padding: "52px 24px 12px",
-    position: "relative", zIndex: 1,
-  },
-  backBtn: {
-    width: 36, height: 36, borderRadius: 10,
-    background: "rgba(255,255,255,0.07)",
-    border: "none", color: "#f0f0f5", cursor: "pointer",
-    display: "flex", alignItems: "center", justifyContent: "center",
-  },
-  headerTitle: { fontSize: 16, fontWeight: 600, letterSpacing: "0.02em", color: "#f0f0f5" },
-  content: {
-    display: "flex", flexDirection: "column",
-    padding: "12px 24px 40px", gap: 16,
-    animation: "fadeUp 0.35s ease both",
-    position: "relative", zIndex: 1,
-  },
-  viewfinderOuter: {
-    borderRadius: 20, overflow: "hidden",
-    background: "rgba(255,255,255,0.03)",
-    border: "1px solid rgba(255,255,255,0.07)",
-  },
-  viewfinderIdle: {
-    height: 260, position: "relative",
-    display: "flex", alignItems: "center", justifyContent: "center",
-  },
-  viewfinderLive: { height: 280, position: "relative", overflow: "hidden" },
-  idleInner: { display: "flex", flexDirection: "column", alignItems: "center", gap: 16 },
-  scannerDiv: { position: "absolute", inset: 0, overflow: "hidden" },
-  scanLine: {
-    position: "absolute", left: "10%", right: "10%", height: 2,
-    background: "linear-gradient(90deg, transparent, #7c6bff, #a855f7, #7c6bff, transparent)",
-    boxShadow: "0 0 12px #7c6bff",
-    animation: "scanMove 2.2s ease-in-out infinite",
-    borderRadius: 2, zIndex: 5, pointerEvents: "none",
-  },
-  corner: {
-    position: "absolute", width: 24, height: 24,
-    borderColor: "rgba(255,255,255,0.3)",
-    borderStyle: "solid", borderWidth: 0,
-  },
-  startCameraBtn: {
-    background: "linear-gradient(135deg, #7c6bff, #a855f7)",
-    border: "none", borderRadius: 12, padding: "11px 20px",
-    color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer",
-    fontFamily: "inherit", display: "flex", alignItems: "center", gap: 8,
-  },
-  stopCameraBtn: {
-    position: "absolute", bottom: 12, right: 12,
-    background: "rgba(0,0,0,0.6)", border: "1px solid rgba(255,255,255,0.15)",
-    borderRadius: 8, padding: "6px 12px", color: "white",
-    fontSize: 12, cursor: "pointer", fontFamily: "inherit",
-    display: "flex", alignItems: "center", gap: 6, zIndex: 10,
-  },
-  cameraError: { fontSize: 12, color: "#f87171", textAlign: "center", margin: 0, maxWidth: 220 },
-  scanHint: { fontSize: 13, color: "rgba(255,255,255,0.35)", textAlign: "center", margin: "-4px 0" },
-  divider: { display: "flex", alignItems: "center", gap: 12 },
-  dividerLine: { flex: 1, height: 1, background: "rgba(255,255,255,0.08)" },
-  dividerText: { fontSize: 12, color: "rgba(255,255,255,0.25)", whiteSpace: "nowrap" },
-  manualWrap: { display: "flex", flexDirection: "column", gap: 10 },
-  input: {
-    background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 14, padding: "14px 18px", color: "#f0f0f5",
-    fontSize: 15, outline: "none", fontFamily: "inherit",
-  },
-  primaryBtn: {
-    background: "linear-gradient(135deg, #7c6bff, #a855f7)",
-    border: "none", borderRadius: 14, padding: "15px 24px",
-    color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer",
-    fontFamily: "inherit", letterSpacing: "0.02em",
-    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-  },
-  loadingRow: { display: "flex", alignItems: "center", gap: 8 },
-  ghostBtn: {
-    background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 14, padding: "14px 24px",
-    color: "rgba(255,255,255,0.4)", fontSize: 14, cursor: "pointer", fontFamily: "inherit",
-  },
-  sandboxBtn: {
-    background: "transparent", border: "none",
-    color: "rgba(255,255,255,0.2)", fontSize: 12, cursor: "pointer",
-    display: "flex", alignItems: "center", gap: 6,
-    alignSelf: "center", fontFamily: "inherit", padding: "4px 0",
-  },
-  merchantCard: {
-    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-    borderRadius: 20, padding: "28px 24px",
-    display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-  },
-  merchantAvatar: {
-    width: 60, height: 60, borderRadius: 18,
-    background: "linear-gradient(135deg, #7c6bff, #a855f7)",
-    display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4,
-  },
-  merchantInitial: { fontSize: 26, fontWeight: 700, color: "white" },
-  merchantName: { fontSize: 17, fontWeight: 700, color: "#f0f0f5", margin: 0 },
-  merchantRef: { fontSize: 12, color: "rgba(255,255,255,0.3)", margin: 0, fontFamily: "monospace" },
-  amountWrap: { display: "flex", alignItems: "flex-start", gap: 3, marginTop: 12 },
-  amountCurrency: { fontSize: 20, fontWeight: 600, color: "#7c6bff", marginTop: 6 },
-  amountValue: {
-    fontFamily: "'Sora', sans-serif",
-    fontSize: 48, fontWeight: 800, color: "#f0f0f5", lineHeight: 1, letterSpacing: "-0.02em",
-  },
-  payeesCard: {
-    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 16, overflow: "hidden", padding: "14px 18px",
-  },
-  payeesTitle: {
-    fontSize: 11, fontWeight: 600, letterSpacing: "0.08em",
-    textTransform: "uppercase" as const, color: "rgba(255,255,255,0.3)", margin: "0 0 10px",
-  },
-  payeeRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" },
-  payeeRef: { fontSize: 13, fontWeight: 600, color: "#f0f0f5" },
-  primaryBadge: {
-    marginLeft: 8, fontSize: 10, fontWeight: 700,
-    background: "rgba(124,107,255,0.2)", color: "#a78bff",
-    borderRadius: 4, padding: "2px 6px", letterSpacing: "0.05em",
-  },
-  payeeDesc: { fontSize: 12, color: "rgba(255,255,255,0.3)", margin: "2px 0 0" },
-  payeeAmount: { fontSize: 14, fontWeight: 700, color: "#f0f0f5" },
-  detailsCard: {
-    background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
-    borderRadius: 16, overflow: "hidden",
-  },
-  detailRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 18px" },
-  detailLabel: { fontSize: 13, color: "rgba(255,255,255,0.35)" },
-  detailValue: {
-    fontSize: 13, fontWeight: 500, color: "#f0f0f5",
-    maxWidth: "55%", textAlign: "right",
-    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-  },
-  payingScreen: {
-    flex: 1, display: "flex", flexDirection: "column",
-    alignItems: "center", justifyContent: "center", gap: 16,
-    animation: "fadeUp 0.3s ease both",
-  },
-  payingSpinner: {
-    width: 80, height: 80, borderRadius: "50%",
-    background: "rgba(124,107,255,0.1)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-  },
-  payingTitle: { fontSize: 20, fontWeight: 700, color: "#f0f0f5", margin: 0 },
-  payingSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.35)", margin: 0 },
+  page: { minHeight:"100vh", background:"#0a0a0f", color:"#f0f0f5", display:"flex", flexDirection:"column", fontFamily:"'DM Sans', sans-serif", position:"relative", overflow:"hidden" },
+  bgGlow: { position:"absolute", top:-120, left:"50%", transform:"translateX(-50%)", width:400, height:400, borderRadius:"50%", background:"radial-gradient(circle, rgba(124,107,255,0.12) 0%, transparent 70%)", pointerEvents:"none" },
+  header: { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"52px 24px 12px", position:"relative", zIndex:1 },
+  backBtn: { width:36, height:36, borderRadius:10, background:"rgba(255,255,255,0.07)", border:"none", color:"#f0f0f5", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" },
+  headerTitle: { fontSize:16, fontWeight:600, letterSpacing:"0.02em", color:"#f0f0f5" },
+  content: { display:"flex", flexDirection:"column", padding:"12px 24px 40px", gap:16, animation:"fadeUp 0.35s ease both", position:"relative", zIndex:1 },
+  viewfinderOuter: { borderRadius:20, overflow:"hidden", background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)" },
+  viewfinderIdle: { height:260, position:"relative", display:"flex", alignItems:"center", justifyContent:"center" },
+  viewfinderLive: { height:280, position:"relative", overflow:"hidden" },
+  idleInner: { display:"flex", flexDirection:"column", alignItems:"center", gap:16 },
+  scannerDiv: { position:"absolute", inset:0, overflow:"hidden" },
+  scanLine: { position:"absolute", left:"10%", right:"10%", height:2, background:"linear-gradient(90deg, transparent, #7c6bff, #a855f7, #7c6bff, transparent)", boxShadow:"0 0 12px #7c6bff", animation:"scanMove 2.2s ease-in-out infinite", borderRadius:2, zIndex:5, pointerEvents:"none" },
+  corner: { position:"absolute", width:24, height:24, borderColor:"rgba(255,255,255,0.3)", borderStyle:"solid", borderWidth:0 },
+  startCameraBtn: { background:"linear-gradient(135deg, #7c6bff, #a855f7)", border:"none", borderRadius:12, padding:"11px 20px", color:"white", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:8 },
+  stopCameraBtn: { position:"absolute", bottom:12, right:12, background:"rgba(0,0,0,0.6)", border:"1px solid rgba(255,255,255,0.15)", borderRadius:8, padding:"6px 12px", color:"white", fontSize:12, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6, zIndex:10 },
+  cameraError: { fontSize:12, color:"#f87171", textAlign:"center", margin:0, maxWidth:220 },
+  scanHint: { fontSize:13, color:"rgba(255,255,255,0.35)", textAlign:"center", margin:"-4px 0" },
+  divider: { display:"flex", alignItems:"center", gap:12 },
+  dividerLine: { flex:1, height:1, background:"rgba(255,255,255,0.08)" },
+  dividerText: { fontSize:12, color:"rgba(255,255,255,0.25)", whiteSpace:"nowrap" },
+  manualWrap: { display:"flex", flexDirection:"column", gap:10 },
+  input: { background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:14, padding:"14px 18px", color:"#f0f0f5", fontSize:15, outline:"none", fontFamily:"inherit" },
+  primaryBtn: { background:"linear-gradient(135deg, #7c6bff, #a855f7)", border:"none", borderRadius:14, padding:"15px 24px", color:"white", fontSize:15, fontWeight:600, cursor:"pointer", fontFamily:"inherit", letterSpacing:"0.02em", display:"flex", alignItems:"center", justifyContent:"center", gap:8 },
+  loadingRow: { display:"flex", alignItems:"center", gap:8 },
+  ghostBtn: { background:"transparent", border:"1px solid rgba(255,255,255,0.1)", borderRadius:14, padding:"14px 24px", color:"rgba(255,255,255,0.4)", fontSize:14, cursor:"pointer", fontFamily:"inherit" },
+  sandboxBtn: { background:"transparent", border:"none", color:"rgba(255,255,255,0.2)", fontSize:12, cursor:"pointer", display:"flex", alignItems:"center", gap:6, alignSelf:"center", fontFamily:"inherit", padding:"4px 0" },
+  merchantCard: { background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)", borderRadius:20, padding:"28px 24px", display:"flex", flexDirection:"column", alignItems:"center", gap:6 },
+  merchantAvatar: { width:60, height:60, borderRadius:18, background:"linear-gradient(135deg, #7c6bff, #a855f7)", display:"flex", alignItems:"center", justifyContent:"center", marginBottom:4 },
+  merchantInitial: { fontSize:26, fontWeight:700, color:"white" },
+  merchantName: { fontSize:17, fontWeight:700, color:"#f0f0f5", margin:0 },
+  merchantRef: { fontSize:12, color:"rgba(255,255,255,0.3)", margin:0, fontFamily:"monospace" },
+  amountWrap: { display:"flex", alignItems:"flex-start", gap:3, marginTop:12 },
+  amountCurrency: { fontSize:20, fontWeight:600, color:"#7c6bff", marginTop:6 },
+  amountValue: { fontFamily:"'Sora', sans-serif", fontSize:48, fontWeight:800, color:"#f0f0f5", lineHeight:1, letterSpacing:"-0.02em" },
+  detailsCard: { background:"rgba(255,255,255,0.03)", border:"1px solid rgba(255,255,255,0.07)", borderRadius:16, overflow:"hidden" },
+  detailRow: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 18px" },
+  detailLabel: { fontSize:13, color:"rgba(255,255,255,0.35)" },
+  detailValue: { fontSize:13, fontWeight:500, color:"#f0f0f5", maxWidth:"55%", textAlign:"right" as const, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" as const },
+  payingScreen: { flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16, animation:"fadeUp 0.3s ease both" },
+  payingSpinner: { width:80, height:80, borderRadius:"50%", background:"rgba(124,107,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center" },
+  payingTitle: { fontSize:20, fontWeight:700, color:"#f0f0f5", margin:0 },
+  payingSubtitle: { fontSize:13, color:"rgba(255,255,255,0.35)", margin:0 },
 };
 
 const cornerPos: Record<string, React.CSSProperties> = {
-  tl: { top: 14, left: 14, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 6 },
-  tr: { top: 14, right: 14, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 6 },
-  bl: { bottom: 14, left: 14, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 6 },
-  br: { bottom: 14, right: 14, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 6 },
+  tl: { top:14, left:14, borderTopWidth:3, borderLeftWidth:3, borderTopLeftRadius:6 },
+  tr: { top:14, right:14, borderTopWidth:3, borderRightWidth:3, borderTopRightRadius:6 },
+  bl: { bottom:14, left:14, borderBottomWidth:3, borderLeftWidth:3, borderBottomLeftRadius:6 },
+  br: { bottom:14, right:14, borderBottomWidth:3, borderRightWidth:3, borderBottomRightRadius:6 },
 };
 
 export default QRPayPage;
