@@ -43,6 +43,7 @@ import SuccessPage from "./pages/SuccessPage";
 import AccountLimitsPage from "./pages/AccountsLimitPage";
 import MultiPaymentForm from "./pages/MutliPaymentForm";
 import SavingsPage from "./pages/SavingsPage";
+import MobileDataPage from "./pages/MobileDataPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -96,7 +97,8 @@ const App = () => (
                 <Route path="/Error" element={<ErrorPage />} />
                 <Route path="/EditAccount" element={<AccountLimitsPage />} />
                 <Route path="/MultiPayment" element={<MultiPaymentForm />} />
-                <Route path="/savings" element={<SavingsPage />} />
+                <Route path="/Savings" element={<SavingsPage />} />
+                <Route path="/mobile" element={<MobileDataPage />} />
               </Route>
             </Route>
 

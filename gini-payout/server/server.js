@@ -634,6 +634,141 @@ app.delete('/api/savings/profile/:accountUuid/clear', async (req, res) => {
   }
 });
 
+// =============================================================================
+// MOBILE PREPAID ROUTES — paste into server.js before app.listen()
+// Base path: chips/money/prepaid/mobile
+// =============================================================================
+
+// GET /api/prepaid/mobile/merchants — list all mobile networks (no auth)
+app.get('/api/prepaid/mobile/merchants', async (req, res) => {
+  try {
+    console.log('📱 GET mobile merchants');
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/prepaid/mobile/merchants?version=1.0`;
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+      },
+    });
+    const text = await resp.text();
+    console.log('📥 Mobile merchants status:', resp.status);
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// GET /api/prepaid/mobile/products?merchantUuid=xxx — list products for a network (no auth)
+app.get('/api/prepaid/mobile/products', async (req, res) => {
+  try {
+    const { merchantUuid } = req.query;
+    if (!merchantUuid) return res.status(400).json({ error: 'merchantUuid is required' });
+
+    console.log('📱 GET mobile products for merchant:', merchantUuid);
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/prepaid/mobile/products?version=1.0&merchantUuid=${merchantUuid}`;
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+      },
+    });
+    const text = await resp.text();
+    console.log('📥 Mobile products status:', resp.status);
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// GET /api/prepaid/mobile/products/:productUuid — get single product (no auth)
+app.get('/api/prepaid/mobile/products/:productUuid', async (req, res) => {
+  try {
+    const { productUuid } = req.params;
+    console.log('📱 GET mobile product:', productUuid);
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/prepaid/mobile/products/${productUuid}?version=1.0`;
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+      },
+    });
+    const text = await resp.text();
+    console.log('📥 Mobile product status:', resp.status);
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// POST /api/prepaid/mobile/purchases — buy airtime/data (auth required)
+app.post('/api/prepaid/mobile/purchases', async (req, res) => {
+  try {
+    const authToken = req.headers['authorization'];
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, '');
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken;
+
+    console.log('📱 POST mobile purchase:', {
+      productUuid: req.body.productUuid,
+      itemNumber: req.body.itemNumber,
+      amount: req.body.amount,
+    });
+
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/prepaid/mobile/purchases?version=1.0`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,
+      },
+      body: JSON.stringify(req.body),
+    });
+    const text = await resp.text();
+    console.log('📥 Mobile purchase status:', resp.status, text.substring(0, 300));
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    console.error('❌ Mobile purchase error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// GET /api/prepaid/mobile/purchases/history?payerAccountUuid=xxx — purchase history (auth required)
+app.get('/api/prepaid/mobile/purchases/history', async (req, res) => {
+  try {
+    const { payerAccountUuid } = req.query;
+    const authToken = req.headers['authorization'];
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, '');
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken;
+
+    if (!payerAccountUuid) return res.status(400).json({ error: 'payerAccountUuid is required' });
+
+    console.log('📱 GET mobile purchase history for:', payerAccountUuid);
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/prepaid/mobile/purchases?payerAccountUuid=${payerAccountUuid}&version=1.0`;
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,
+      },
+    });
+    const text = await resp.text();
+    console.log('📥 Mobile purchase history status:', resp.status);
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`✅ Proxy server running on http://localhost:${PORT}`);

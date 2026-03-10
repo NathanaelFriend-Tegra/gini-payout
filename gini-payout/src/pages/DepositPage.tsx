@@ -70,12 +70,6 @@ const DepositPage: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <div className="px-6 pt-12 pb-8">
-        <button
-          onClick={() => (step === "confirm" ? setStep("amount") : navigate(-1))}
-          className="text-muted-foreground text-sm mb-8 flex items-center gap-2"
-        >
-          ← Back
-        </button>
         <h1 className="text-2xl font-bold text-foreground">Deposit money</h1>
         <p className="text-muted-foreground mt-2 text-sm">
           {step === "amount"

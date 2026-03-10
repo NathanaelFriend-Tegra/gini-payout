@@ -6,17 +6,14 @@ import { InfoCard } from "@/components/ui/InfoCard";
 import { GiniButton } from "@/components/ui/GiniButton";
 import { TransactionList } from "@/components/ui/TransactionList";
 import { TrustBadge } from "@/components/ui/TrustBadge";
-import { Transaction } from "@/lib/mockData";
+import { getTransactionHistory, getAccountDetails, getCurrentUser, OmneaTxn } from "@/lib/api";
 import { toast } from "sonner";
-
-import { getTransactionHistory, getAccountDetails, getCurrentUser } from "@/lib/api";
-import { mapApiTxnToUi } from "@/lib/txnMapper";
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [balance, setBalance] = useState<string>("R0.00");
   const [walletRef, setWalletRef] = useState<string | undefined>(undefined);
-  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<OmneaTxn[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,10 +45,8 @@ const HomePage: React.FC = () => {
         );
         setWalletRef(accountDetails.uuid);
 
-        // API returns `values`, not `transactions`
-        const raw = (txnResponse as any).values ?? txnResponse.transactions ?? [];
-        const uiTxns = raw.map(mapApiTxnToUi);
-        setAllTransactions(uiTxns);
+        const raw: OmneaTxn[] = (txnResponse as any).values ?? (txnResponse as any).transactions ?? [];
+        setAllTransactions(raw);
 
       } catch (error) {
         console.error('❌ Failed to fetch home data:', error);
@@ -66,7 +61,9 @@ const HomePage: React.FC = () => {
 
   // Show only the 3 most recent on the home screen
   const recentTransactions = useMemo(
-    () => allTransactions.slice(0, 3),
+    () => [...allTransactions]
+      .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
+      .slice(0, 3),
     [allTransactions]
   );
 
@@ -76,7 +73,8 @@ const HomePage: React.FC = () => {
     { label: "Spend", to: "/spend", icon: "shopping" },
     { label: "Savings", to: "/savings", icon: "savings" },
     { label: "History", to: "/txns", icon: "list" },
-    { label: "Support", to: "/support", icon: "chat" },
+    { label: "Mobile", to: "/mobile", icon: "phone" },
+    { label: "Support", to: "/support", icon: "chat" }
   ];
 
   return (

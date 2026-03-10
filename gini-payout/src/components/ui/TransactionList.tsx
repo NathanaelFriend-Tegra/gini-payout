@@ -1,105 +1,153 @@
-import React from 'react';
-import { 
-  ArrowDownLeft, 
-  ArrowUpRight, 
-  Smartphone, 
-  Wifi, 
-  Zap, 
-  CreditCard,
-  Ticket,
-  QrCode,
-  FileText,
-  RotateCcw,
-  Coins
-} from 'lucide-react';
-import { Transaction, transactionTypeLabels } from '@/lib/mockData';
-import { formatRelativeTime } from '@/lib/formatters';
+import React, { useState } from 'react';
+import { OmneaTxn } from '@/lib/api';
+import { ChevronDown, ChevronUp, ArrowDownLeft, ArrowUpRight, RefreshCw } from 'lucide-react';
 
-interface TransactionListProps {
-  transactions: Transaction[];
+interface Props {
+  transactions: OmneaTxn[];
   loading?: boolean;
 }
 
-const typeIcons: Record<Transaction['type'], React.ReactNode> = {
-  payout_credit: <ArrowDownLeft className="w-5 h-5" />,
-  eft: <CreditCard className="w-5 h-5" />,
-  cash: <Coins className="w-5 h-5" />,
-  airtime: <Smartphone className="w-5 h-5" />,
-  data: <Wifi className="w-5 h-5" />,
-  billpay: <FileText className="w-5 h-5" />,
-  voucher: <Ticket className="w-5 h-5" />,
-  qrpay: <QrCode className="w-5 h-5" />,
-  electricity: <Zap className="w-5 h-5" />,
-  fee: <ArrowUpRight className="w-5 h-5" />,
-  reversal: <RotateCcw className="w-5 h-5" />,
+const statusStyles: Record<string, string> = {
+  COMPLETED:  'bg-emerald-100 text-emerald-700',
+  PENDING:    'bg-amber-100  text-amber-700',
+  CANCELLED:  'bg-red-100    text-red-600',
+  FAILED:     'bg-red-100    text-red-600',
+  PROCESSING: 'bg-blue-100   text-blue-700',
 };
 
-const statusColors: Record<Transaction['status'], string> = {
-  pending: 'text-warning',
-  success: 'text-foreground',
-  failed: 'text-destructive',
-  reversed: 'text-muted-foreground',
+const typeIcon = (type?: string) => {
+  if (!type) return <RefreshCw className="h-4 w-4" />;
+  const t = type.toUpperCase();
+  if (t.includes('CREDIT') || t.includes('DEPOSIT') || t.includes('RECEIVE'))
+    return <ArrowDownLeft className="h-4 w-4 text-emerald-600" />;
+  if (t.includes('DEBIT') || t.includes('WITHDRAWAL') || t.includes('SEND'))
+    return <ArrowUpRight className="h-4 w-4 text-rose-500" />;
+  return <RefreshCw className="h-4 w-4 text-muted-foreground" />;
 };
 
-export const TransactionList: React.FC<TransactionListProps> = ({ 
-  transactions,
-  loading = false
-}) => {
+const fmt = (n?: number) =>
+  n == null ? '—' : new Intl.NumberFormat('en-ZA', { minimumFractionDigits: 2 }).format(n);
+
+const fmtDate = (d?: string) => {
+  if (!d) return '—';
+  const date = new Date(d);
+  return new Intl.DateTimeFormat('en-ZA', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  }).format(date);
+};
+
+const Row = ({ label, value }: { label: string; value?: string | number | null }) =>
+  value != null && value !== '' && value !== 'string' ? (
+    <div className="flex justify-between gap-4 py-1 border-b border-border/40 last:border-0">
+      <span className="text-xs text-muted-foreground shrink-0">{label}</span>
+      <span className="text-xs text-right font-medium break-all">{String(value)}</span>
+    </div>
+  ) : null;
+
+const TransactionCard: React.FC<{ txn: OmneaTxn }> = ({ txn }) => {
+  const [open, setOpen] = useState(false);
+  const status = txn.transactionStatus ?? 'UNKNOWN';
+  const statusClass = statusStyles[status] ?? 'bg-muted text-muted-foreground';
+  const isCredit = txn.movementAmount != null && txn.movementAmount > 0;
+
+  return (
+    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      {/* Summary row — always visible */}
+      <button
+        onClick={() => setOpen((p) => !p)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+      >
+        {/* Icon */}
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+          {typeIcon(txn.transactionType)}
+        </div>
+
+        {/* Middle */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">
+            {txn.siteName || txn.transactionType || 'Transaction'}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">
+            {txn.description || txn.message || txn.serviceCode || fmtDate(txn.created)}
+          </p>
+        </div>
+
+        {/* Amount + status */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className={`text-sm font-semibold ${isCredit ? 'text-emerald-600' : 'text-foreground'}`}>
+            {isCredit ? '+' : ''}{fmt(txn.movementAmount ?? txn.amount)}
+          </span>
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${statusClass}`}>
+            {status}
+          </span>
+        </div>
+
+        {/* Expand chevron */}
+        <div className="ml-1 text-muted-foreground">
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </div>
+      </button>
+
+      {/* Expanded detail panel */}
+      {open && (
+        <div className="px-4 pb-4 pt-1 space-y-1 bg-muted/20 border-t border-border/50">
+          <Row label="Date"            value={fmtDate(txn.created)} />
+          <Row label="Transaction type" value={txn.transactionType} />
+          <Row label="Status"           value={txn.transactionStatus} />
+          <Row label="Amount"           value={fmt(txn.amount)} />
+          <Row label="Movement amount"  value={fmt(txn.movementAmount)} />
+          <Row label="Gratuity"         value={txn.gratuityAmount ? fmt(txn.gratuityAmount) : null} />
+
+          {txn.fees && txn.fees.totalAmount > 0 && (
+            <>
+              <Row label="Fee (external)"  value={fmt(txn.fees.externalAmount)} />
+              <Row label="Fee (internal)"  value={fmt(txn.fees.internalAmount)} />
+              <Row label="VAT"             value={fmt(txn.fees.vatAmount)} />
+              <Row label="Total fees"      value={fmt(txn.fees.totalAmount)} />
+            </>
+          )}
+
+          <Row label="Description"    value={txn.description} />
+          <Row label="Message"        value={txn.message} />
+          <Row label="Site"           value={txn.siteName} />
+          <Row label="Service code"   value={txn.serviceCode} />
+          <Row label="Provider code"  value={txn.providerCode} />
+          <Row label="Facility type"  value={txn.facilityType} />
+          <Row label="Category"       value={[txn.category1, txn.category2, txn.category3].filter(Boolean).join(' › ')} />
+          <Row label="Reference"      value={txn.txRefInfo || txn.systemRefInfo} />
+          <Row label="Request ID"     value={txn.requestId} />
+          <Row label="Transfer UUID"  value={txn.transferUuid} />
+          <Row label="Last modified"  value={fmtDate(txn.lastModified)} />
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const TransactionList: React.FC<Props> = ({ transactions, loading }) => {
   if (loading) {
     return (
-      <div className="space-y-1">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="txn-item animate-pulse">
-            <div className="w-10 h-10 rounded-full bg-secondary" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-32 bg-secondary rounded" />
-              <div className="h-3 w-20 bg-secondary rounded" />
-            </div>
-            <div className="h-5 w-16 bg-secondary rounded" />
-          </div>
+      <div className="space-y-3">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />
         ))}
       </div>
     );
   }
 
-  if (transactions.length === 0) {
+  if (!transactions.length) {
     return (
-      <div className="py-12 text-center">
-        <p className="text-muted-foreground">No transactions yet</p>
+      <div className="text-center py-12 text-muted-foreground text-sm">
+        No transactions to display
       </div>
     );
   }
 
   return (
-    <div className="bg-card rounded-xl border border-border overflow-hidden">
+    <div className="space-y-2">
       {transactions.map((txn) => (
-        <div key={txn.id} className="txn-item">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-            txn.direction === 'credit' 
-              ? 'bg-success/10 text-success' 
-              : 'bg-secondary text-muted-foreground'
-          }`}>
-            {typeIcons[txn.type]}
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-foreground truncate">
-              {transactionTypeLabels[txn.type]}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {formatRelativeTime(txn.createdAt)}
-              {txn.status === 'pending' && (
-                <span className="ml-2 text-warning">• Pending</span>
-              )}
-            </p>
-          </div>
-          
-          <p className={`font-semibold money-display ${
-            txn.direction === 'credit' ? 'text-success' : statusColors[txn.status]
-          }`}>
-            {txn.direction === 'credit' ? '+' : '-'}{txn.amountFormatted}
-          </p>
-        </div>
+        <TransactionCard key={txn.uuid} txn={txn} />
       ))}
     </div>
   );

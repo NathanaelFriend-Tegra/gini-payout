@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Smartphone, Wifi, FileText, QrCode, Zap, Store } from 'lucide-react';
+import { FileText, QrCode, Zap, Store } from 'lucide-react';
 import { ListItem } from '@/components/ui/ListItem';
 import { mockWalletSummary, WalletSummary } from '@/lib/mockData';
 import { useNavigate } from "react-router-dom";
@@ -57,20 +57,6 @@ const SpendPage: React.FC = () => {
         </h3>
 
         <div className="space-y-2">
-          <ListItem
-            title="Airtime"
-            subtitle="Top up any SA mobile number"
-            to="/spend/airtime"
-            icon={<Smartphone className="w-5 h-5" />}
-          />
-
-          <ListItem
-            title="Data"
-            subtitle="Buy data bundles"
-            to="/spend/data"
-            icon={<Wifi className="w-5 h-5" />}
-          />
-
           <ListItem
             title="Electricity"
             subtitle="Prepaid electricity token"

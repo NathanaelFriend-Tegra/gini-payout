@@ -108,6 +108,43 @@
     ]
   },
   {
+    "category": "Mobile & Airtime",
+    "items": [
+      {
+        "question": "How do I buy airtime or data?",
+        "answer": "From the home screen, tap 'Mobile'. Select your network (Vodacom, MTN, CellC, or Telkom), choose a bundle, enter the recipient's mobile number, and confirm the purchase. The top-up is processed immediately."
+      },
+      {
+        "question": "Which networks are supported?",
+        "answer": "We currently support Vodacom, MTN, CellC, and Telkom Mobile. More networks may be added in future."
+      },
+      {
+        "question": "Can I buy airtime or data for someone else?",
+        "answer": "Yes. When entering the recipient number, simply type in any valid South African mobile number — it does not have to be your own."
+      },
+      {
+        "question": "How quickly does the top-up reflect?",
+        "answer": "Mobile top-ups are processed instantly. The recipient should receive their airtime or data within a few seconds of a successful purchase."
+      },
+      {
+        "question": "Is there a minimum or maximum purchase amount?",
+        "answer": "The available bundles are fixed amounts set by each network. You can only purchase the bundles listed — custom amounts are not supported at this time."
+      },
+      {
+        "question": "I entered the wrong number. Can I get a refund?",
+        "answer": "Unfortunately mobile top-ups cannot be reversed once processed, as the value is delivered directly to the recipient's number. Please double-check the number before confirming your purchase."
+      },
+      {
+        "question": "The purchase failed. What should I do?",
+        "answer": "Check that you have sufficient wallet balance and that the recipient number is a valid South African mobile number in 071 234 5678 or +27 71 234 5678 format. If the problem persists, contact our support team with the date and amount of the failed transaction."
+      },
+      {
+        "question": "Where can I see my past mobile purchases?",
+        "answer": "Tap the clock icon in the top right corner of the Mobile page to view your full purchase history."
+      }
+    ]
+  },
+  {
     "category": "Technical Issues",
     "items": [
       {

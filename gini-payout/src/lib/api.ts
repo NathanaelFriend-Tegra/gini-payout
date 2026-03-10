@@ -406,16 +406,36 @@ export interface UpdateAccountLimitsResponse {
 // ── Transactions ──────────────────────────────────────────────────────────────
 
 export interface OmneaTxn {
-  id: string;
+  uuid: string;
+  created: string;
+  createdBy?: string;
+  lastModified?: string;
+  requestId?: string;
   amount: number;
-  type: string;
-  date: string;
-  currency?: string;
+  gratuityAmount?: number;
+  fees?: {
+    externalAmount: number;
+    internalAmount: number;
+    vatAmount: number;
+    totalAmount: number;
+  };
+  accountUuid?: string;
+  category1?: string;
+  category2?: string;
+  category3?: string;
+  contraAccountUuid?: string;
   description?: string;
-  merchant?: string;
-  reference?: string;
-  createdAt?: string;
-  timestamp?: string;
+  facilityType?: string;
+  message?: string;
+  movementAmount?: number;
+  providerCode?: string;
+  serviceCode?: string;
+  siteName?: string;
+  transactionStatus?: string;
+  transactionType?: string;
+  transferUuid?: string;
+  txRefInfo?: string;
+  systemRefInfo?: string;
 }
 
 export interface TransactionHistoryResponse {
@@ -452,6 +472,90 @@ export interface SavingsPatchOperation {
   op: 'replace' | 'add' | 'remove';
   path: '/enabled' | '/userSavingsBalance' | '/userMonthlySavingsIncrease';
   value: boolean | number;
+}
+
+
+// ── MOBILE PREPAID ─────────────────────────────────────────────────────────────────────
+
+export interface MobileMerchant {
+  uuid: string;
+  name: string;           // "CellC" | "MTN" | "TelkomMobile" | "Vodacom"
+  merchantType: string;   // "MOBILE"
+  created: string;
+}
+
+export interface MobileMerchantsResponse {
+  values: MobileMerchant[];
+  pageSize: number;
+  pageNumber: number;
+  totalPages: number;
+  totalElements: number;
+}
+
+export interface MobileProduct {
+  uuid: string;
+  merchantUuid: string;
+  productType: string;    
+  productCode: string;
+  description: string;
+  amount: number;
+  productStatus: string;  
+  approvalStatus: string;
+  requestId?: string;
+  created?: string;
+  reason?: string;
+}
+
+export interface MobileProductsResponse {
+  values: MobileProduct[];
+  pageSize: number;
+  pageNumber: number;
+  totalPages: number;
+  totalElements: number;
+}
+
+export interface MobilePurchaseRequest {
+  payerAccountUuid: string;
+  payerCategory1: string;   // network name e.g. "Vodacom"
+  payerCategory2: string;
+  payerCategory3: string;
+  payerRefInfo: string;     // e.g. "Prepaid"
+  productUuid: string;
+  itemNumber: string;       // recipient mobile number e.g. "+27744976384"
+  amount: number;
+}
+
+export interface MobilePurchaseResponse {
+  payerAccountUuid: string;
+  payerCategory1: string;
+  payerCategory2: string;
+  payerCategory3: string;
+  payerRefInfo: string;
+  productUuid: string;
+  itemNumber: string;
+  amount: number;
+}
+
+export interface MobilePurchaseHistoryItem {
+  uuid: string;
+  created: string;
+  payerAccountUuid: string;
+  payerCategory1: string;
+  payerCategory2: string;
+  payerCategory3: string;
+  payerRefInfo: string;
+  productUuid: string;
+  itemNumber: string;
+  amount: number;
+  requestId?: string;
+}
+
+export interface MobilePurchaseHistoryResponse {
+  values: MobilePurchaseHistoryItem[];
+  pageSize: number;
+  pageNumber: number;
+  totalPages: number;
+  totalElements: number;
 }
 
 
@@ -693,5 +797,56 @@ export const clearSavingsProfile = async (
   return apiCall<void>(
     `savings/profile/${accountUuid}/clear`,
     { method: 'DELETE', requiresAuth: true }
+  );
+};
+
+
+// ── API Functions ─────────────────────────────────────────────────────────────
+
+/** GET /prepaid/mobile/merchants — list all mobile networks */
+export const getMobileMerchants = async (): Promise<MobileMerchantsResponse> => {
+  return apiCall<MobileMerchantsResponse>(
+    'prepaid/mobile/merchants',
+    { method: 'GET', requiresAuth: false }
+  );
+};
+
+/** GET /prepaid/mobile/products?merchantUuid=xxx — list products for a network */
+export const getMobileProducts = async (
+  merchantUuid: string
+): Promise<MobileProductsResponse> => {
+  return apiCall<MobileProductsResponse>(
+    `prepaid/mobile/products?merchantUuid=${encodeURIComponent(merchantUuid)}`,
+    { method: 'GET', requiresAuth: false }
+  );
+};
+
+/** GET /prepaid/mobile/products/:productUuid — get a single product */
+export const getMobileProduct = async (
+  productUuid: string
+): Promise<MobileProduct> => {
+  return apiCall<MobileProduct>(
+    `prepaid/mobile/products/${productUuid}`,
+    { method: 'GET', requiresAuth: false }
+  );
+};
+
+/** POST /prepaid/mobile/purchases — buy airtime or data */
+export const purchaseMobileProduct = async (
+  data: MobilePurchaseRequest
+): Promise<MobilePurchaseResponse> => {
+  return apiCall<MobilePurchaseResponse>(
+    'prepaid/mobile/purchases',
+    { method: 'POST', requiresAuth: true, body: JSON.stringify(data) }
+  );
+};
+
+/** GET /prepaid/mobile/purchases/history — get purchase history */
+export const getMobilePurchaseHistory = async (
+  payerAccountUuid: string
+): Promise<MobilePurchaseHistoryResponse> => {
+  return apiCall<MobilePurchaseHistoryResponse>(
+    `prepaid/mobile/purchases/history?payerAccountUuid=${encodeURIComponent(payerAccountUuid)}`,
+    { method: 'GET', requiresAuth: true }
   );
 };
