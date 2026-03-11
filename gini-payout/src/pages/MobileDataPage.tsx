@@ -69,7 +69,7 @@ const MobileDataPage: React.FC = () => {
         setStep("loading");
         try {
             const res = await getMobileProducts(merchant.uuid);
-            setProducts(res.values ?? []);
+            setProducts((res.values ?? []).filter(p => p.productStatus === "ACTIVE"));
             setStep("product");
         } catch {
             toast.error("Could not load products for this network.");

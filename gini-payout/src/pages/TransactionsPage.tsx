@@ -11,10 +11,12 @@ const TransactionsPage: React.FC = () => {
   const [transactions, setTransactions] = useState<OmneaTxn[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filter state
+
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [fromParts, setFromParts] = useState({ d: '', m: '', y: '' });
+  const [toParts, setToParts] = useState({ d: '', m: '', y: '' });
   const [showFilters, setShowFilters] = useState(false);
   const [sortDesc, setSortDesc] = useState(true); // default: newest first
 
@@ -84,17 +86,7 @@ const TransactionsPage: React.FC = () => {
 
   return (
     <div className="px-4 py-6 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← Back
-        </button>
-        <h2 className="text-base font-semibold">Transaction History</h2>
-        <div className="w-12" />
-      </div>
+
 
       {/* Search + controls row */}
       <div className="flex gap-2">
@@ -131,8 +123,8 @@ const TransactionsPage: React.FC = () => {
         <button
           onClick={() => setShowFilters((prev) => !prev)}
           className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors ${dateFrom || dateTo
-              ? 'bg-primary text-primary-foreground border-primary'
-              : 'border-input bg-background text-muted-foreground hover:text-foreground'
+            ? 'bg-primary text-primary-foreground border-primary'
+            : 'border-input bg-background text-muted-foreground hover:text-foreground'
             }`}
         >
           <Calendar className="h-4 w-4" />
@@ -144,14 +136,18 @@ const TransactionsPage: React.FC = () => {
       {/* Date filters (collapsible) */}
       {showFilters && (
         <div className="flex flex-col sm:flex-row gap-2 p-3 rounded-lg bg-muted/50 border border-border">
-          {[
-            { label: 'From', value: dateFrom, set: setDateFrom },
-            { label: 'To', value: dateTo, set: setDateTo },
-          ].map(({ label, value, set }) => {
-            const [y, m, d] = value ? value.split('-') : ['', '', ''];
-            const update = (newY: string, newM: string, newD: string) => {
-              if (newY && newM && newD) set(`${newY}-${newM}-${newD}`);
-              else set('');
+          {([
+            { label: 'From', parts: fromParts, setParts: setFromParts, setDate: setDateFrom },
+            { label: 'To', parts: toParts, setParts: setToParts, setDate: setDateTo },
+          ] as const).map(({ label, parts, setParts, setDate }) => {
+            const update = (field: 'd' | 'm' | 'y', val: string) => {
+              const next = { ...parts, [field]: val };
+              setParts(next);
+              if (next.d && next.m && next.y) {
+                setDate(`${next.y}-${next.m.padStart(2, '0')}-${next.d.padStart(2, '0')}`);
+              } else {
+                setDate('');
+              }
             };
             return (
               <div key={label} className="flex-1 space-y-1">
@@ -159,20 +155,20 @@ const TransactionsPage: React.FC = () => {
                 <div className="flex gap-1">
                   <input
                     type="number" placeholder="DD" min={1} max={31}
-                    value={d || ''}
-                    onChange={(e) => update(y, m, e.target.value.padStart(2, '0'))}
+                    value={parts.d}
+                    onChange={(e) => update('d', e.target.value)}
                     className="w-14 px-2 py-1.5 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring text-center"
                   />
                   <input
                     type="number" placeholder="MM" min={1} max={12}
-                    value={m || ''}
-                    onChange={(e) => update(y, e.target.value.padStart(2, '0'), d)}
+                    value={parts.m}
+                    onChange={(e) => update('m', e.target.value)}
                     className="w-14 px-2 py-1.5 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring text-center"
                   />
                   <input
                     type="number" placeholder="YYYY" min={2000} max={2100}
-                    value={y || ''}
-                    onChange={(e) => update(e.target.value, m, d)}
+                    value={parts.y}
+                    onChange={(e) => update('y', e.target.value)}
                     className="w-20 px-2 py-1.5 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring text-center"
                   />
                 </div>
@@ -181,7 +177,11 @@ const TransactionsPage: React.FC = () => {
           })}
           {(dateFrom || dateTo) && (
             <button
-              onClick={() => { setDateFrom(''); setDateTo(''); }}
+              onClick={() => {
+                setDateFrom(''); setDateTo('');
+                setFromParts({ d: '', m: '', y: '' });
+                setToParts({ d: '', m: '', y: '' });
+              }}
               className="self-end text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 pb-1.5"
             >
               Clear dates

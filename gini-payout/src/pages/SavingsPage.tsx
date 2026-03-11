@@ -127,16 +127,7 @@ const SavingsPage: React.FC = () => {
     <div style={s.page}>
       <div style={s.glow} />
 
-      {/* Header */}
-      <div style={s.header}>
-        <button onClick={() => navigate(-1)} style={s.backBtn}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <path d="M19 12H5M12 5l-7 7 7 7" />
-          </svg>
-        </button>
-        <span style={s.headerTitle}>Savings</span>
-        <div style={{ width: 36 }} />
-      </div>
+    
 
       {/* ── LOADING ── */}
       {view === "loading" && (

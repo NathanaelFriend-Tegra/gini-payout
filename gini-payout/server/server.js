@@ -418,43 +418,37 @@ app.get('/api/eft/funding/:uuid', async (req, res) => {
 // ── EFT Payment (bank transfer out) ──────────────────────────────────────────
 app.post('/api/eft/payment', async (req, res) => {
   try {
+    const authToken = req.headers['authorization'];
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, '');
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken;
+
     const {
-      amount, payerRefInfo, branchCode, accountName,
+      amount, payerAccountUuid, payerRefInfo, branchCode, accountName,
       accountNumber, bankRefInfo, bankCode, bankAccountType, bankPaymentMethodType
     } = req.body;
 
-    console.log('=== EFT Payment Request ===', { amount, accountNumber });
+    console.log('🏦 EFT Payment Request:', { amount, accountNumber, bankCode, payerAccountUuid });
 
     const apiUrl = `${process.env.OMNEA_BASE_URL}chips/money/eft/payments`;
-    const requestBody = {
-      amount,
-      payerAccountUuid: process.env.AccountUuid,
-      payerRefInfo,
-      branchCode,
-      accountName,
-      accountNumber,
-      bankRefInfo,
-      bankCode,
-      bankAccountType,
-      bankPaymentMethodType,
-    };
-
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
-        'Authorization': process.env.Authorization,
         'Content-Type': 'application/json',
         'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        amount, payerAccountUuid, payerRefInfo, branchCode,
+        accountName, accountNumber, bankRefInfo, bankCode,
+        bankAccountType, bankPaymentMethodType,
+      }),
     });
 
-    const data = await response.json();
-    console.log('📥 EFT Payment status:', response.status);
-
-    if (!response.ok) return res.status(response.status).json({ error: data.message || 'EFT payment failed', details: data });
-    res.json(data);
+    const text = await response.text();
+    console.log('📥 EFT Payment status:', response.status, text.substring(0, 300));
+    try { res.status(response.status).json(JSON.parse(text)); }
+    catch { res.status(response.status).send(text); }
   } catch (error) {
     res.status(500).json({ error: 'Internal server error', message: error.message });
   }

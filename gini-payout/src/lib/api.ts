@@ -244,6 +244,27 @@ export interface EftFeesResponse {
   };
 }
 
+// ── EFT Payment (bank transfer out) ──────────────────────────────────────────
+
+export interface EftPaymentRequest {
+  amount: number;
+  payerAccountUuid: string;
+  payerRefInfo: string;
+  branchCode: string;
+  accountName: string;
+  accountNumber: string;
+  bankRefInfo: string;
+  bankCode: string;
+  bankAccountType: 'CHEQUE' | 'SAVINGS' | 'TRANSMISSION';
+  bankPaymentMethodType: string;
+}
+
+export interface EftPaymentResponse {
+  uuid?: string;
+  status?: string;
+  transactionId?: string;
+  apimStatus?: ApimStatus;
+}
 // ── ATM Cash Send ─────────────────────────────────────────────────────────────
 
 export interface ATMCashSendRequest {
@@ -447,6 +468,8 @@ export interface TransactionHistoryResponse {
   transactions?: OmneaTxn[]; // fallback alias
 }
 
+
+
 // ── Savings ─────────────────────────────────────────────────────────────────────
 
 export interface SavingsProfile {
@@ -516,12 +539,12 @@ export interface MobileProductsResponse {
 
 export interface MobilePurchaseRequest {
   payerAccountUuid: string;
-  payerCategory1: string;   // network name e.g. "Vodacom"
+  payerCategory1: string;   
   payerCategory2: string;
   payerCategory3: string;
-  payerRefInfo: string;     // e.g. "Prepaid"
+  payerRefInfo: string;     
   productUuid: string;
-  itemNumber: string;       // recipient mobile number e.g. "+27744976384"
+  itemNumber: string;       
   amount: number;
 }
 
@@ -800,8 +823,18 @@ export const clearSavingsProfile = async (
   );
 };
 
+// ── Withdraw EFT ─────────────────────────────────────────────────────────────
+export const createEftPayment = async (
+  data: EftPaymentRequest
+): Promise<EftPaymentResponse> => {
+  return apiCall<EftPaymentResponse>(
+    'eft/payment',
+    { method: 'POST', requiresAuth: true, body: JSON.stringify(data) }
+  );
+};
 
-// ── API Functions ─────────────────────────────────────────────────────────────
+
+
 
 /** GET /prepaid/mobile/merchants — list all mobile networks */
 export const getMobileMerchants = async (): Promise<MobileMerchantsResponse> => {

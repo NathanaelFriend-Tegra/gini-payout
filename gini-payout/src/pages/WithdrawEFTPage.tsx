@@ -4,8 +4,8 @@ import { Banknote } from 'lucide-react';
 import { FormInput } from '@/components/ui/FormInput';
 import { FormSelect } from '@/components/ui/FormSelect';
 import { GiniButton } from '@/components/ui/GiniButton';
-import { mockWalletSummary, WalletSummary } from '@/lib/mockData';
 import { toast } from 'sonner';
+import { getAccountDetails, getCurrentUser, createEftPayment } from '@/lib/api';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,41 +17,60 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// Bank code mapping
-const BANK_CODES: { [key: string]: string } = {
-  'FNB': 'FNB',
-  'Standard Bank': 'SBSA',
-  'ABSA': 'ABSA',
-  'Nedbank': 'NEDBANK',
-  'Capitec': 'CAPITEC',
-  'POSTBANK': 'POSTBANK',
+const BANK_CODES: Record<string, string> = {
+  'FNB':            'FNB',
+  'Standard Bank':  'SBSA',
+  'ABSA':           'ABSA',
+  'Nedbank':        'NEDBANK',
+  'Capitec':        'CAPITEC',
+  'POSTBANK':       'POSTBANK',
   'Discovery Bank': 'DISCOVERY',
-  'TymeBank': 'TYMEBANK',
-  'Bank Zero': 'BANKZERO',
-  'African Bank': 'AFRICAN_BANK',
+  'TymeBank':       'TYMEBANK',
+  'Bank Zero':      'BANKZERO',
+  'African Bank':   'AFRICAN_BANK',
 };
 
 const WithdrawEFTPage: React.FC = () => {
   const navigate = useNavigate();
-  const [summary, setSummary] = useState<WalletSummary | null>(null);
+  const [cashBalance, setCashBalance] = useState<number>(0);
+  const [cashBalanceFormatted, setCashBalanceFormatted] = useState<string>('R0.00');
+  const [accountUuid, setAccountUuid] = useState<string>('');
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    bankName: 'FNB',
-    accountType: 'CHEQUE',
-    accountNumber: '',
-    branchCode: '',
-    amount: '',
-    reference: '',
+    bankName:          'FNB',
+    accountType:       'CHEQUE',
+    accountNumber:     '',
+    branchCode:        '',
+    amount:            '',
+    reference:         '',
     accountHolderName: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
-    setSummary(mockWalletSummary);
+    const fetchBalance = async () => {
+      setLoading(true);
+      try {
+        const user = getCurrentUser();
+        const uuid = user?.accountUuid;
+        if (!uuid) { navigate('/login'); return; }
+        setAccountUuid(uuid);
+        const accountDetails = await getAccountDetails(uuid);
+        const available = accountDetails.availableBalanceAmount ?? 0;
+        setCashBalance(available);
+        setCashBalanceFormatted(
+          new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(available)
+        );
+      } catch (error) {
+        console.error('Failed to fetch balance:', error);
+        toast.error('Could not load account balance. Please retry.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBalance();
   }, []);
-
-  const cashBalance = summary?.cashBalance || 0;
-  const cashBalanceFormatted = summary?.cashBalanceFormatted || 'R0.00';
 
   const updateForm = (field: string, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -69,16 +88,41 @@ const WithdrawEFTPage: React.FC = () => {
     enteredAmount > 0 &&
     !exceedsBalance;
 
-
+  const handleConfirm = async () => {
+    setShowConfirm(false);
+    setSubmitting(true);
+    try {
+      await createEftPayment({
+        amount:                enteredAmount,
+        payerAccountUuid:      accountUuid,
+        payerRefInfo:          form.reference || 'Withdrawal',
+        branchCode:            form.branchCode,
+        accountName:           form.accountHolderName,
+        accountNumber:         form.accountNumber,
+        bankRefInfo:           form.reference || 'Withdrawal',
+        bankCode:              BANK_CODES[form.bankName] ?? form.bankName,
+        bankAccountType:       form.accountType as 'CHEQUE' | 'SAVINGS' | 'TRANSMISSION',
+        bankPaymentMethodType: 'STANDARD',
+      });
+      toast.success('Withdrawal submitted successfully');
+      navigate(-1);
+    } catch (error: any) {
+      console.error('EFT payment failed:', error);
+      toast.error(error.message || 'Withdrawal failed. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="px-4 py-6">
-      {/* Available Cash Balance */}
       <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-6">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Available to withdraw</p>
-            <p className="text-2xl font-bold text-primary">{cashBalanceFormatted}</p>
+            <p className="text-2xl font-bold text-primary">
+              {loading ? '...' : cashBalanceFormatted}
+            </p>
           </div>
           <Banknote className="w-8 h-8 text-primary opacity-60" />
         </div>
@@ -105,16 +149,16 @@ const WithdrawEFTPage: React.FC = () => {
           value={form.bankName}
           onChange={e => updateForm('bankName', e.target.value)}
           options={[
-            { label: 'FNB', value: 'FNB' },
-            { label: 'Standard Bank', value: 'Standard Bank' },
-            { label: 'ABSA', value: 'ABSA' },
-            { label: 'Nedbank', value: 'Nedbank' },
-            { label: 'Capitec', value: 'Capitec' },
-            { label: 'POSTBANK', value: 'POSTBANK' },
+            { label: 'FNB',            value: 'FNB' },
+            { label: 'Standard Bank',  value: 'Standard Bank' },
+            { label: 'ABSA',           value: 'ABSA' },
+            { label: 'Nedbank',        value: 'Nedbank' },
+            { label: 'Capitec',        value: 'Capitec' },
+            { label: 'POSTBANK',       value: 'POSTBANK' },
             { label: 'Discovery Bank', value: 'Discovery Bank' },
-            { label: 'TymeBank', value: 'TymeBank' },
-            { label: 'Bank Zero', value: 'Bank Zero' },
-            { label: 'African Bank', value: 'African Bank' },
+            { label: 'TymeBank',       value: 'TymeBank' },
+            { label: 'Bank Zero',      value: 'Bank Zero' },
+            { label: 'African Bank',   value: 'African Bank' },
           ]}
         />
 
@@ -124,8 +168,8 @@ const WithdrawEFTPage: React.FC = () => {
           onChange={e => updateForm('accountType', e.target.value)}
           options={[
             { label: 'Cheque/Current', value: 'CHEQUE' },
-            { label: 'Savings', value: 'SAVINGS' },
-            { label: 'Transmission', value: 'TRANSMISSION' },
+            { label: 'Savings',        value: 'SAVINGS' },
+            { label: 'Transmission',   value: 'TRANSMISSION' },
           ]}
         />
 
@@ -174,11 +218,7 @@ const WithdrawEFTPage: React.FC = () => {
         </p>
 
         <div className="pt-4">
-          <GiniButton
-            type="submit"
-            loading={submitting}
-            disabled={!isValid}
-          >
+          <GiniButton type="submit" loading={submitting} disabled={!isValid || loading}>
             Confirm EFT
           </GiniButton>
         </div>
@@ -189,29 +229,14 @@ const WithdrawEFTPage: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm EFT Withdrawal</AlertDialogTitle>
             <AlertDialogDescription>
-              You are about to transfer R{form.amount} to {form.accountHolderName}'s {form.accountType.toLowerCase()} account ****{form.accountNumber.slice(-4)} at {form.bankName}.
+              You are about to transfer R{form.amount} to {form.accountHolderName}'s{' '}
+              {form.accountType.toLowerCase()} account ****{form.accountNumber.slice(-4)} at {form.bankName}.
               This action cannot be undone and will take 1-2 business days to process.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={async () => {
-                setShowConfirm(false);
-                setSubmitting(true);
-                try {
-                  await new Promise(resolve => setTimeout(resolve, 1500));
-                  toast.success('Withdrawal submitted successfully');
-                  navigate(-1);
-                } catch (error) {
-                  toast.error('Withdrawal failed. Please try again.');
-                } finally {
-                  setSubmitting(false);
-                }
-              }}
-            >
-              Confirm
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleConfirm}>Confirm</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

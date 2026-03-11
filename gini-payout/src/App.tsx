@@ -18,6 +18,7 @@ import ClaimPage from "./pages/ClaimPage";
 import OnboardPage from "./pages/OnboardPage";
 import OTPPage from "./pages/OTPPage";
 
+
 // Pages - Protected
 import HomePage from "./pages/HomePage";
 import DepositPage from "./pages/DepositPage";
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/c/:token" element={<ClaimPage />} />
             <Route path="/onboard" element={<OnboardPage />} />
             <Route path="/otp" element={<OTPPage />} />
+            <Route path="/landingPage" element={<LandingPage />} />
             {/* ── Protected Routes ── */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AppShell />}>
