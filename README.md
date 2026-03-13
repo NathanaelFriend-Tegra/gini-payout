@@ -128,14 +128,14 @@ SituationWhat to doResponse field doesn't match your interfaceconsole.log the ra
 •	Profile Settings  
 
 [] Frontend Security  
- () Move JWTs from localStorage to httpOnly cookies  
- () Remove all console.log calls that expose tokens, UUIDs, or amounts  
- ()  Gate any remaining logs behind a isDev flag  
- ()  Sanitise QR code payload fields before rendering (description, refInfo, siteName)  
- ()  Add token expiry check before every API call — redirect to login if expired  
- ()  Ensure all API errors show generic user messages, not raw API error strings  
- () Confirm the user is authenticated before rendering any protected page  
- ()  Clear all tokens and user data on logout (clearTokens())  
+ • Move JWTs from localStorage to httpOnly cookies  
+ • Remove all console.log calls that expose tokens, UUIDs, or amounts  
+ • Gate any remaining logs behind a isDev flag  
+ • Sanitise QR code payload fields before rendering (description, refInfo, siteName)  
+ • Add token expiry check before every API call — redirect to login if expired  
+ • Ensure all API errors show generic user messages, not raw API error strings  
+ • Confirm the user is authenticated before rendering any protected page  
+ • Clear all tokens and user data on logout (clearTokens())  
 
   
 === Tebogo ===  
