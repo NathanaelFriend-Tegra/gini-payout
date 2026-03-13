@@ -1,4 +1,4 @@
-================================ Goal Of GiniPayout ================================
+============================= Goal Of GiniPayout =============================   
 GiniPayout is the Ricipient side App, of a refunding app, refunds will be sent via tokens and all APIs will be facilitated via Omnea.   
 === Key Features ===  
 [] User Registration & ID Verification  
