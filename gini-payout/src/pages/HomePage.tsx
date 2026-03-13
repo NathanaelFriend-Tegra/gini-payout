@@ -59,7 +59,6 @@ const HomePage: React.FC = () => {
     fetchData();
   }, []);
 
-  // Show only the 3 most recent on the home screen
   const recentTransactions = useMemo(
     () => [...allTransactions]
       .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
@@ -71,9 +70,7 @@ const HomePage: React.FC = () => {
     { label: "Withdraw", to: "/withdraw", icon: "cash" },
     { label: "Deposit", to: "/deposit", icon: "deposit" },
     { label: "Spend", to: "/spend", icon: "shopping" },
-    { label: "Savings", to: "/savings", icon: "savings" },
     { label: "History", to: "/txns", icon: "list" },
-    { label: "Mobile", to: "/mobile", icon: "phone" },
     { label: "Support", to: "/support", icon: "chat" }
   ];
 
@@ -83,8 +80,6 @@ const HomePage: React.FC = () => {
 
       <BalanceCard
         cashBalance={balance}
-        storeCredits={[]}
-        totalStoreCredit={"R0.00"}
         walletRef={walletRef}
         loading={loading}
       />

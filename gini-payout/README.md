@@ -1,73 +1,145 @@
-# Welcome to your Lovable project
+================================ Goal Of GiniPayout ================================
+GiniPayout is the Ricipient side App, of a refunding app, refunds will be sent via tokens and all APIs will be facilitated via Omnea. 
+=== Key Features ===
+[] User Registration & ID Verification
+[] Refund Claiming Via Tokens - Vouchers
+    () Vouchers are the only way to deposit money currently
+    () iAccount to iAccount payments will come later
+[] Withdraw methods such as:
+    () CashSend
+    () EFT To Bank Account
+    () Voucher Claiming 
+[] Support Pages
+    () Email & Cellphone Support
+    () FAQ Page - Helping users navigate and answer FAQs
+[] Secure App
+    () API Security Best Practices to be applied
+    () 2 Factor OTP verification
 
-## Project info
+================================ Integration Guide ================================
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+Integration with Gini takes place in 3 sections 
 
-## How can I edit this code?
+1. Add the Interface (lib/api.ts)
+Define the request and response shapes in api.ts.
+typescriptexport interface MyNewRequest {
+  accountUuid: string;
+  amount: number;
+}
 
-There are several ways of editing your application.
+export interface MyNewResponse {
+  result: string;
+  apimStatus: ApimStatus; // always included in Omnea responses
+}
 
-**Use Lovable**
+2. Add the API Function (lib/api.ts)
+Call apiCall<T>() with the proxy endpoint, method, and whether auth is required.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+typescriptexport const myNewApiCall = async (data: MyNewRequest): Promise<MyNewResponse> =>
+  apiCall<MyNewResponse>('your/endpoint', {
+    method: 'POST',           // GET | POST
+    requiresAuth: true,       // false for public endpoints (login, register)
+    body: JSON.stringify(data),
+  });
 
-Changes made via Lovable will be committed automatically to this repo.
+Common patterns:
+typescript// GET with query params
+export const getSomething = (id: string) =>
+  apiCall<SomeResponse>(`resource/${id}?version=1.0`, { requiresAuth: true });
 
-**Use your preferred IDE**
+// POST with body
+export const createSomething = (data: SomeRequest) =>
+  apiCall<SomeResponse>('resource', {
+    method: 'POST',
+    requiresAuth: true,
+    body: JSON.stringify(data),
+  });
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+3. Add the Proxy Route (server/server.js)
+Mirror the function in server.js, swapping the proxy path for the full Omnea URL.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+javascriptapp.post('/api/your/endpoint', async (req, res) => {
+  const authToken = req.headers['authorization'];
+  const resp = await fetch(`${process.env.OMNEA_BASE_URL}chips/money/your/endpoint`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'marketplaceKeyId': MARKETPLACE_KEY_ID,
+      'Authorization': `Bearer ${authToken}`, // omit if not required
+    },
+    body: JSON.stringify(req.body),
+  });
+  const text = await resp.text();
+  try { res.status(resp.status).json(JSON.parse(text)); }
+  catch { res.status(resp.status).send(text); }
+});
 
-Follow these steps:
+4. Use It in a Page (pages/page.tsx)
+Import and call inside a try/catch. Navigate to the shared result pages on completion.
+typescriptimport { myNewApiCall } from '@/lib/api';
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+const handleAction = async () => {
+  try {
+    const result = await myNewApiCall({ accountUuid: user.accountUuid, amount });
+    navigate(`/success?message=Done!`);
+  } catch (err: any) {
+    toast.error(err.message || 'Something went wrong.');
+    // or navigate(`/error?message=${err.message}`);
+  }
+};
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Things to Watch
+SituationWhat to doResponse field doesn't match your interfaceconsole.log the raw response and update the interface400 Bad RequestLog req.body in the proxy — a required field is likely missing or wrong format500 from OmneaTheir server error — share the apimStatus.marketplaceId with Omnea supportMobile numberAlways strip +27 and replace with 0 before sendingEmpty emailUse user.email || 'noreply@ginipayout.co.za' — Omnea rejects empty strings
 
-# Step 3: Install the necessary dependencies.
-npm i
+================================ Member Responibilities ================================
+=== Nathanael ===
+[] User Authentication & Security
+•	Registration with phone verification (Omnea OTPs)
+•	JWT Token Authorisation and Refresh
+•	Pin reset 
+•	MFA OTP Verification
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+[] Wallet Management
+•	Cash balance display
+•	Real-time balance sync with Omnea
+•	Transaction history with search/filters
 
-**Edit a file directly in GitHub**
+[] Withdrawal Methods
+•	EFT to bank account (1-2 days)
+•	ATM cardless withdrawal (ABSA, Nedbank)
+•	Transfer to Gini iAccount 
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+[] Payment Options
+•	QR code payments
+•	Prepaid electricity
+•	Bill payments
 
-**Use GitHub Codespaces**
+[] Support System
+•	FAQ section
+•	Email/phone support integration
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+=== Logan ===
 
-## What technologies are used for this project?
+[] Additional Features
+•	Transaction receipts (PDF)
+•	Email/SMS/Push notifications – Can supplement with Firebase or similar, NTFY service.
+•	Profile Settings
 
-This project is built with:
+[] Frontend Security
+ () Move JWTs from localStorage to httpOnly cookies
+ () Remove all console.log calls that expose tokens, UUIDs, or amounts
+ ()  Gate any remaining logs behind a isDev flag
+ ()  Sanitise QR code payload fields before rendering (description, refInfo, siteName)
+ ()  Add token expiry check before every API call — redirect to login if expired
+ ()  Ensure all API errors show generic user messages, not raw API error strings
+ () Confirm the user is authenticated before rendering any protected page
+ ()  Clear all tokens and user data on logout (clearTokens())
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
 
-## How can I deploy this project?
+=== Tebogo ===
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+[] Frontend, Testing and feedback 
+•	Testing features
+•   Github Management
+•   Lovable Integration
+•   Frontend Lovable Generation
