@@ -71,10 +71,7 @@ const HomePage: React.FC = () => {
     { label: "Withdraw", to: "/withdraw", icon: "cash" },
     { label: "Deposit", to: "/deposit", icon: "deposit" },
     { label: "Spend", to: "/spend", icon: "shopping" },
-    { label: "Savings", to: "/savings", icon: "savings" },
     { label: "History", to: "/txns", icon: "list" },
-    { label: "Mobile", to: "/mobile", icon: "phone" },
-    { label: "Support", to: "/support", icon: "chat" }
   ];
 
   return (

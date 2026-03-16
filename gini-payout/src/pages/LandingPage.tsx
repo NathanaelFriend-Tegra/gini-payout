@@ -45,7 +45,7 @@ const LandingPage: React.FC = () => {
           title="You've received money"
           subtitle="Claim, withdraw, or spend your money securely."
           primaryCtaText="Claim money"
-          primaryCtaTo="/c/demo"
+          primaryCtaTo="/login"
           secondaryCtaText="How it works"
           secondaryCtaTo="/how-it-works"
         />

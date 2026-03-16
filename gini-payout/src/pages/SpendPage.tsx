@@ -58,9 +58,9 @@ const SpendPage: React.FC = () => {
 
         <div className="space-y-2">
           <ListItem
-            title="Electricity"
-            subtitle="Prepaid electricity token"
-            to="/spend/electricity"
+            title="Prepaid Mobile"
+            subtitle="Buy prepaid mobile products for youself or a friend"
+            to="/mobile"
             icon={<Zap className="w-5 h-5" />}
           />
 
