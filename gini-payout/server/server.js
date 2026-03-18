@@ -123,6 +123,34 @@ app.post('/api/auth/pin', async (req, res) => {
   }
 });
 
+// POST /api/auth/pin/otp — send OTP to reset or set a PIN
+app.post('/api/auth/pin/otp', async (req, res) => {
+  try {
+    const { mobileNumber, emailAddress } = req.body;
+    console.log('📱 PIN OTP request for:', mobileNumber);
+    const url = `${process.env.OMNEA_BASE_URL}chips/auth/pin/otp`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+      },
+      body: JSON.stringify({ mobileNumber, emailAddress }),
+    });
+    const text = await resp.text();
+    console.log('📥 PIN OTP status:', resp.status);
+    try { res.status(resp.status).json(text ? JSON.parse(text) : { sent: true }); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+app.post('/api/auth/pin', async (req, res) => {
+  // ... your existing code unchanged
+});
+
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { packageName, mobileNumber, pin } = req.body;
@@ -790,4 +818,5 @@ app.listen(PORT, () => {
   console.log(`   PATCH /api/savings/profile/:accountUuid`);
   console.log(`   GET  /api/savings/detail/:accountUuid`);
   console.log(`   DELETE /api/savings/profile/:accountUuid/clear`);
+  console.log(`   POST /api/auth/pin/otp`);
 });

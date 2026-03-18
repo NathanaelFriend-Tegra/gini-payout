@@ -45,6 +45,7 @@ import AccountLimitsPage from "./pages/AccountsLimitPage";
 import MultiPaymentForm from "./pages/MutliPaymentForm";
 import SavingsPage from "./pages/SavingsPage";
 import MobileDataPage from "./pages/MobileDataPage";
+import ForgotPinPage from "./pages/ForgotPinPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +75,7 @@ const App = () => (
             <Route path="/onboard" element={<OnboardPage />} />
             <Route path="/otp" element={<OTPPage />} />
             <Route path="/landingPage" element={<LandingPage />} />
+            <Route path="/forgot-pin" element={<ForgotPinPage />} />
             {/* ── Protected Routes ── */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AppShell />}>
@@ -101,6 +103,7 @@ const App = () => (
                 <Route path="/MultiPayment" element={<MultiPaymentForm />} />
                 <Route path="/Savings" element={<SavingsPage />} />
                 <Route path="/mobile" element={<MobileDataPage />} />
+                
               </Route>
             </Route>
 

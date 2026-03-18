@@ -162,6 +162,26 @@ export interface LoginRequest {
   pin: string;
 }
 
+
+export interface SendPinOtpRequest {
+  mobileNumber: string;   // e.g. "+27851231234"
+  emailAddress?: string;  // optional
+}
+
+export interface SendPinOtpResponse {
+  sent: boolean;
+}
+
+export interface SetPinRequest {
+  mobileNumber: string;
+  otp: string;
+  pin: string;
+}
+
+export interface SetPinResponse {
+  success: boolean;
+}
+
 export interface LoginResponse {
   jwttoken: string;
   jwtRefresh: string;
@@ -659,6 +679,33 @@ export const login = async (mobileNumber: string, pin: string): Promise<any> => 
 
   console.log('✅ Step 3 complete: User data stored');
   return refreshData;
+};
+// ==============================================
+// PIN MANAGEMENT
+// =============================================
+export const sendPinOtp = async (
+  data: SendPinOtpRequest
+): Promise<SendPinOtpResponse> => {
+  return apiCall<SendPinOtpResponse>(
+    'auth/pin/otp',
+    {
+      method: 'POST',
+      requiresAuth: false,
+      body: JSON.stringify(data),
+    }
+  );
+};
+
+
+export const setPin = async (data: SetPinRequest): Promise<SetPinResponse> => {
+  return apiCall<SetPinResponse>(
+    'auth/pin',
+    {
+      method: 'POST',
+      requiresAuth: false,
+      body: JSON.stringify(data),
+    }
+  );
 };
 
 export const getAccountDetails = async (accountUuid?: string): Promise<AccountDetailsResponse> => {

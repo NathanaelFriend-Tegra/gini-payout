@@ -124,11 +124,8 @@ const LoginPage = () => {
    * Handle "Forgot PIN" click
    */
   const handleForgotPin = () => {
-    toast.info('PIN reset feature coming soon!');
-    // TODO: Navigate to PIN reset flow
-    // navigate('/reset-pin');
-  };
-
+  navigate('/forgot-pin');
+};
   // ==============================================
   // RENDER
   // ==============================================
