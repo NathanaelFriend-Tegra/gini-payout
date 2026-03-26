@@ -119,12 +119,11 @@ const WithdrawPage: React.FC = () => {
         />
 
         <ListItem
-          title="Gini iAccount"
-          subtitle="Earn up to 6% interest • Instant transfer"
-          to={balance ? "/withdraw/gini" : undefined}
+          title="Transfer to another iAccount"
+          subtitle="Make Payments to another iAccount"
+          to={balance ? "/iAccountTransfer" : undefined}
           onClick={!balance ? () => {} : undefined}
           icon={<Wallet className="w-5 h-5" />}
-          badge="6% interest"
           disabled={!balance}
         />
       </div>

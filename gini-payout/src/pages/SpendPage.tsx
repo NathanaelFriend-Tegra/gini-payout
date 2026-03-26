@@ -67,7 +67,7 @@ const SpendPage: React.FC = () => {
           <ListItem
             title="Bill payments"
             subtitle="Pay supported billers"
-            to="/spend/bills"
+            to="/BillPayment"
             icon={<FileText className="w-5 h-5" />}
           />
         </div>

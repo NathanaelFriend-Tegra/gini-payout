@@ -17,7 +17,7 @@ import RegisterPinPage from "./pages/RegisterPinPage";
 import ClaimPage from "./pages/ClaimPage";
 import OnboardPage from "./pages/OnboardPage";
 import OTPPage from "./pages/OTPPage";
-
+import ForgotPinPage from "./pages/ForgotPinPage";
 
 // Pages - Protected
 import HomePage from "./pages/HomePage";
@@ -45,7 +45,9 @@ import AccountLimitsPage from "./pages/AccountsLimitPage";
 import MultiPaymentForm from "./pages/MutliPaymentForm";
 import SavingsPage from "./pages/SavingsPage";
 import MobileDataPage from "./pages/MobileDataPage";
-import ForgotPinPage from "./pages/ForgotPinPage";
+import UserToUserPaymens from "./pages/UserToUserPaymentPage"
+import BillPaymentPage from "./pages/BillPaymentPage";
+import BillResultPage from "./pages/BillResultPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,10 +78,10 @@ const App = () => (
             <Route path="/otp" element={<OTPPage />} />
             <Route path="/landingPage" element={<LandingPage />} />
             <Route path="/forgot-pin" element={<ForgotPinPage />} />
+            <Route path="/" element={<Navigate to="/landingPage" replace />} />
             {/* ── Protected Routes ── */}
             <Route element={<ProtectedRoute />}>
               <Route element={<AppShell />}>
-                <Route path="/" element={<HomePage />} />
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/deposit" element={<DepositPage />} />
                 <Route path="/withdraw" element={<WithdrawPage />} />
@@ -103,7 +105,9 @@ const App = () => (
                 <Route path="/MultiPayment" element={<MultiPaymentForm />} />
                 <Route path="/Savings" element={<SavingsPage />} />
                 <Route path="/mobile" element={<MobileDataPage />} />
-                
+                <Route path="/iAccountTransfer" element={<UserToUserPaymens />} />
+                <Route path="/BillPayment" element={<BillPaymentPage />} />
+                <Route path="/BillPaymentResult" element={<BillResultPage />} />
               </Route>
             </Route>
 

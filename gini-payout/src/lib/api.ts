@@ -488,6 +488,33 @@ export interface TransactionHistoryResponse {
   transactions?: OmneaTxn[]; // fallback alias
 }
 
+// ── Send Funds (user to user)  ─────────────────────────────────
+ 
+export interface SendFundsRequest {
+  payerAccountUuid: string;   // from logged-in user's account
+  payerRefInfo: string;       // user-supplied payment reference
+  payeeAccountUuid: string;   // recipient's account UUID
+  payeeRefInfo: string;       // reference shown to recipient
+  payeeMessage?: string;      // optional message to recipient
+  payeeSiteRefInfo?: string;
+  payeeCategory1?: string;
+  payeeCategory2?: string;
+  payeeCategory3?: string;
+  payeeSiteName?: string;
+  siteName?: string;
+  amount: number;             // in cents or rands — match your API convention
+  gratuityAmount?: number;
+}
+ 
+export interface SendFundsResponse {
+  uuid?: string;
+  status?: string;
+  transactionId?: string;
+  requestId?: string;
+  amount?: number;
+  apimStatus?: ApimStatus;
+}
+
 
 
 // ── Savings ─────────────────────────────────────────────────────────────────────
@@ -602,6 +629,54 @@ export interface MobilePurchaseHistoryResponse {
 }
 
 
+// ── EFT Instant Payments (Bills) ─────────────────────────────────────────────
+
+export interface InstantPaymentTransaction {
+  transactionType: 'DEPOSIT' | 'WITHDRAWAL' | string;
+  uuid: string;
+}
+
+export interface InstantPaymentResponse {
+  uuid: string;
+  requestId: string;
+  created: string;
+  createdBy: string;
+  createdByChannelUuid: string;
+  lastModified: string;
+  lastModifiedBy: string;
+  lastModifiedByChannelUuid: string;
+  reason: string;
+  payeeAccountUuid: string;
+  payeeRefInfo: string;
+  bankRefInfo: string;
+  comment: string;
+  payerMobile: string;
+  paymentUrl: string;        // redirect the user here to complete payment
+  redirectUrl: string;
+  feeSponsorType: 'NONE' | 'PAYER' | 'PAYEE' | string;
+  amount: number;
+  gratuityAmount: number;
+  status: 'PENDING' | 'COMPLETE' | 'CANCELLED' | 'FAILED' | string;
+  transaction: InstantPaymentTransaction[];
+  apimStatus?: ApimStatus;
+}
+
+export interface CreateInstantPaymentRequest {
+  requestId: string;
+  tokenId: string;           // bill/payee token
+  payeeAccountUuid: string;
+  payeeRefInfo: string;      // reference shown to payee
+  bankRefInfo: string;       // bank statement reference
+  payeeSiteRefInfo?: string;
+  comment?: string;
+  payerMobile: string;
+  redirectUrl: string;       // where to send the user after payment
+  feeSponsorType: 'NONE' | 'PAYER' | 'PAYEE';
+  amount: number;
+  gratuityAmount?: number;
+}
+
+
 // ==============================================
 // AUTHENTICATION & REGISTRATION APIs
 // ==============================================
@@ -705,6 +780,17 @@ export const setPin = async (data: SetPinRequest): Promise<SetPinResponse> => {
       requiresAuth: false,
       body: JSON.stringify(data),
     }
+  );
+};
+// ==============================================
+// User to User Account Transfers
+// =============================================
+export const sendFunds = async (
+  data: SendFundsRequest
+): Promise<SendFundsResponse> => {
+  return apiCall<SendFundsResponse>(
+    'sendfunds',
+    { method: 'POST', requiresAuth: true, body: JSON.stringify(data) }
   );
 };
 
@@ -928,5 +1014,28 @@ export const getMobilePurchaseHistory = async (
   return apiCall<MobilePurchaseHistoryResponse>(
     `prepaid/mobile/purchases/history?payerAccountUuid=${encodeURIComponent(payerAccountUuid)}`,
     { method: 'GET', requiresAuth: true }
+  );
+};
+
+
+// ── EFT Instant Payments (Bills) ─────────────────────────────────────────────
+
+/** GET /eft/instantpayments/:uuid — poll payment status */
+export const getInstantPayment = async (
+  uuid: string
+): Promise<InstantPaymentResponse> => {
+  return apiCall<InstantPaymentResponse>(
+    `eft/instantpayments/${uuid}`,
+    { method: 'GET', requiresAuth: true }
+  );
+};
+
+/** POST /eft/instantpayments — initiate a bill payment */
+export const createInstantPayment = async (
+  data: CreateInstantPaymentRequest
+): Promise<InstantPaymentResponse> => {
+  return apiCall<InstantPaymentResponse>(
+    'eft/instantpayments',
+    { method: 'POST', requiresAuth: true, body: JSON.stringify(data) }
   );
 };

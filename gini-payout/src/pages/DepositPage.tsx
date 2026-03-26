@@ -107,11 +107,10 @@ const DepositPage: React.FC = () => {
                 <button
                   key={preset}
                   onClick={() => setAmount(String(preset))}
-                  className={`rounded-xl py-2 text-sm font-medium border transition-colors ${
-                    amount === String(preset)
+                  className={`rounded-xl py-2 text-sm font-medium border transition-colors ${amount === String(preset)
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-muted text-foreground border-input hover:border-primary"
-                  }`}
+                    }`}
                 >
                   R{preset.toLocaleString()}
                 </button>
@@ -137,7 +136,7 @@ const DepositPage: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">You receive</span>
                 <span className="text-sm font-semibold text-foreground">
-                  R{parseFloat(amount).toFixed(2)}
+                  R{(parseFloat(amount) - (fees?.totalAmount ?? 0)).toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -149,7 +148,7 @@ const DepositPage: React.FC = () => {
               <div className="border-t border-border pt-4 flex justify-between items-center">
                 <span className="text-sm font-medium text-foreground">Total from your bank</span>
                 <span className="text-base font-bold text-foreground">
-                  R{(parseFloat(amount) + (fees?.totalAmount ?? 0)).toFixed(2)}
+                  R{parseFloat(amount).toFixed(2)}
                 </span>
               </div>
             </div>

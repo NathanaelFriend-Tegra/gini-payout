@@ -382,7 +382,7 @@ app.get('/api/eft/funding/fees', async (req, res) => {
   try {
     const { amount, version } = req.query;
     const authToken = req.headers['authorization'];
-    const url = `${process.env.OMNEA_BASE_URL}chips/money/eft/funding/fees?version=${version || '1.0'}&amount=${amount}`;
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/eft/payments/paypump/deposit/fee?version=${version || '1.0'}&amount=${amount}`;
     const resp = await fetch(url, {
       method: 'GET',
       headers: {
@@ -728,6 +728,41 @@ app.get('/api/prepaid/mobile/products/:productUuid', async (req, res) => {
   }
 });
 
+// ── Send Funds (user to user) ─────────────────────────────────────────────────
+app.post('/api/sendfunds', async (req, res) => {
+  try {
+    const authToken = req.headers['authorization'];
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, '');
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken;
+
+    console.log('💸 Send Funds request:', {
+      payerAccountUuid: req.body.payerAccountUuid,
+      payeeAccountUuid: req.body.payeeAccountUuid,
+      amount: req.body.amount,
+    });
+
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/sendfunds`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,
+      },
+      body: JSON.stringify(req.body),
+    });
+
+    const text = await resp.text();
+    console.log('📥 Send Funds status:', resp.status, text.substring(0, 300));
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    console.error('❌ Send Funds error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 // POST /api/prepaid/mobile/purchases — buy airtime/data (auth required)
 app.post('/api/prepaid/mobile/purchases', async (req, res) => {
   try {
@@ -791,6 +826,74 @@ app.get('/api/prepaid/mobile/purchases/history', async (req, res) => {
   }
 });
 
+// ── EFT Instant Payments (Bills) ──────────────────────────────────────────────
+
+// GET /api/eft/instantpayments/:uuid — get instant payment status by UUID
+app.get('/api/eft/instantpayments/:uuid', async (req, res) => {
+  try {
+    const { uuid } = req.params;
+    const authToken = req.headers['authorization'];
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, '');
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken;
+
+    console.log('🧾 GET EFT instant payment:', uuid);
+
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/eft/instantpayments/${uuid}`;
+    const resp = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,
+      },
+    });
+
+    const text = await resp.text();
+    console.log('📥 EFT instant payment GET status:', resp.status, text.substring(0, 300));
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    console.error('❌ EFT instant payment GET error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// POST /api/eft/instantpayments — create a new instant payment (bill payment)
+app.post('/api/eft/instantpayments', async (req, res) => {
+  try {
+    const authToken = req.headers['authorization'];
+    const rawJwt = authToken?.replace(/^Bearer\s+/i, '');
+    const bearerToken = rawJwt ? `Bearer ${rawJwt}` : authToken;
+
+    console.log('🧾 POST EFT instant payment:', {
+      amount: req.body.amount,
+      payeeAccountUuid: req.body.payeeAccountUuid,
+      tokenId: req.body.tokenId,
+      requestId: req.body.requestId,
+    });
+
+    const url = `${process.env.OMNEA_BASE_URL}chips/money/eft/instantpayments`;
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'marketplaceKeyId': MARKETPLACE_KEY_ID,
+        'Authorization': bearerToken,
+      },
+      body: JSON.stringify(req.body),
+    });
+
+    const text = await resp.text();
+    console.log('📥 EFT instant payment POST status:', resp.status, text.substring(0, 300));
+    try { res.status(resp.status).json(JSON.parse(text)); }
+    catch { res.status(resp.status).send(text); }
+  } catch (err) {
+    console.error('❌ EFT instant payment POST error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`✅ Proxy server running on http://localhost:${PORT}`);
@@ -819,4 +922,6 @@ app.listen(PORT, () => {
   console.log(`   GET  /api/savings/detail/:accountUuid`);
   console.log(`   DELETE /api/savings/profile/:accountUuid/clear`);
   console.log(`   POST /api/auth/pin/otp`);
+  console.log(`   GET  /api/eft/instantpayments/:uuid`);
+  console.log(`   POST /api/eft/instantpayments`);
 });
