@@ -7,17 +7,18 @@ import { GiniButton } from '@/components/ui/GiniButton';
 import { FormInput } from '@/components/ui/FormInput';
 import { useAuth } from '@/contexts/AuthContext';
 import { login, checkRegistrationStatus } from '../lib/api';
+import { requestNotificationPermission } from '@/lib/notifications';
 // TODO: Import these API functions from api.ts
 // import { login, checkRegistrationStatus } from '@/lib/api';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { refreshAuth } = useAuth(); 
+  const { refreshAuth } = useAuth();
   // Form state
   const [mobileNumber, setMobileNumber] = useState('');
   const [pin, setPin] = useState('');
   const [showPin, setShowPin] = useState(false);
-  
+
   // Loading states
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingNumber, setIsCheckingNumber] = useState(false);
@@ -32,17 +33,17 @@ const LoginPage = () => {
    */
   const handleMobileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
-    
+
     // Auto-add +27 prefix for SA numbers
     if (value.startsWith('0')) {
       value = '27' + value.substring(1);
     }
-    
+
     // Limit to 11 digits (27 + 9 digits)
     if (value.startsWith('27')) {
       value = value.substring(0, 11);
     }
-    
+
     setMobileNumber(value ? '+' + value : '');
   };
 
@@ -60,28 +61,28 @@ const LoginPage = () => {
    * Called when user moves to PIN field
    */
   const handleCheckRegistration = async () => {
-  if (mobileNumber.length < 12) {
-    toast.error('Please enter a valid mobile number');
-    return;
-  }
-
-  setIsCheckingNumber(true);
-
-  try {
-    const status = await checkRegistrationStatus(mobileNumber); // ← real API call
-
-    if (!status.registered) {
-      toast.error('Mobile number not registered. Please sign up first.');
-    } else {
-      toast.success('Number verified! Please enter your PIN.');
+    if (mobileNumber.length < 12) {
+      toast.error('Please enter a valid mobile number');
+      return;
     }
-  } catch (error) {
-    console.error('Registration check failed:', error);
-    toast.error('Could not verify number. Please try again.');
-  } finally {
-    setIsCheckingNumber(false);
-  }
-};
+
+    setIsCheckingNumber(true);
+
+    try {
+      const status = await checkRegistrationStatus(mobileNumber); // ← real API call
+
+      if (!status.registered) {
+        toast.error('Mobile number not registered. Please sign up first.');
+      } else {
+        toast.success('Number verified! Please enter your PIN.');
+      }
+    } catch (error) {
+      console.error('Registration check failed:', error);
+      toast.error('Could not verify number. Please try again.');
+    } finally {
+      setIsCheckingNumber(false);
+    }
+  };
 
   /**
    * Handle form submission - Login
@@ -103,11 +104,12 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      
+
       console.log('Login attempt:', { mobileNumber, pin });
       const response = await login(mobileNumber, pin);
       console.log('Login successful:', response);
       refreshAuth();
+      await requestNotificationPermission(response.accountUuid);
       toast.success('Welcome back!');
       navigate('/home');
 
@@ -124,8 +126,8 @@ const LoginPage = () => {
    * Handle "Forgot PIN" click
    */
   const handleForgotPin = () => {
-  navigate('/forgot-pin');
-};
+    navigate('/forgot-pin');
+  };
   // ==============================================
   // RENDER
   // ==============================================

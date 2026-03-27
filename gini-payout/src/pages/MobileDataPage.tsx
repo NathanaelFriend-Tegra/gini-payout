@@ -12,6 +12,7 @@ import {
     MobileProduct,
     MobilePurchaseHistoryItem,
 } from "@/lib/api";
+import { sendSpendNotification } from "@/lib/notifications";
 
 type Step = "loading" | "network" | "product" | "number" | "confirm" | "processing" | "success" | "history";
 
@@ -123,6 +124,10 @@ const MobileDataPage: React.FC = () => {
                 amount: productDetail?.amount ?? selectedProduct.amount,
             });
             setSuccessData(result);
+            sendSpendNotification(
+                "Purchase Successful 🎉",
+                `${fmt(productDetail?.amount ?? 0)} ${productDetail?.productType?.toLowerCase()} sent to ${mobileNumber}`
+            );
             setStep("success");
             toast.success("Purchase successful!");
         } catch (err: any) {

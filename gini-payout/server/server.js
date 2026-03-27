@@ -7,6 +7,7 @@ dotenv.config();
 
 const app = express();
 
+
 const allowedOrigins = [
   "http://localhost:8080",
   "http://192.168.68.107:8080",
@@ -29,8 +30,30 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.json({ limit: '10mb', type: 'application/json-patch+json' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 const PORT = process.env.PORT || 3001;
 const MARKETPLACE_KEY_ID = process.env.OMNEA_MARKETPLACE_KEY_ID;
+const require = createRequire(import.meta.url);
+const serviceAccount = require("./serviceAccountKey.json");
+
+const TOKENS_FILE = "./fcm-tokens.json";
+const loadTokens = () => existsSync(TOKENS_FILE) ? JSON.parse(readFileSync(TOKENS_FILE)) : {};
+const saveTokens = (tokens) => writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2));
+
+// Helper to send a push notification
+const sendPushNotification = async (accountUuid, title, body) => {
+  const tokens = loadTokens();
+  const token = tokens[accountUuid];
+  if (!token) return console.log("⚠️ No FCM token for:", accountUuid);
+  try {
+    await admin.messaging().send({ token, notification: { title, body } });
+    console.log("🔔 Notification sent to:", accountUuid);
+  } catch (err) {
+    console.error("❌ FCM send error:", err.message);
+  }
+};
 
 if (!process.env.OMNEA_BASE_URL) console.error("❌ Missing OMNEA_BASE_URL in .env");
 if (!MARKETPLACE_KEY_ID) console.error("❌ Missing OMNEA_MARKETPLACE_KEY_ID in .env");
@@ -38,6 +61,19 @@ if (!MARKETPLACE_KEY_ID) console.error("❌ Missing OMNEA_MARKETPLACE_KEY_ID in 
 // ── Health ────────────────────────────────────────────────────────────────────
 app.get("/health", (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+// POST /api/notifications/token — save FCM token for a user
+app.post('/api/notifications/token', (req, res) => {
+  const { accountUuid, fcmToken } = req.body;
+  if (!accountUuid || !fcmToken) {
+    return res.status(400).json({ error: "accountUuid and fcmToken are required" });
+  }
+  const tokens = loadTokens();
+  tokens[accountUuid] = fcmToken;
+  saveTokens(tokens);
+  console.log("💾 FCM token saved for:", accountUuid);
+  res.json({ success: true });
 });
 
 // ── Registration ──────────────────────────────────────────────────────────────
@@ -344,7 +380,18 @@ app.post('/api/payments/qr/pay', async (req, res) => {
 
     const text = await resp.text();
     console.log('📥 QR Pay response status:', resp.status);
-    console.log('📥 QR Pay response body:', text);
+     // ✅ Fire notification if payment was successful
+    if (resp.status === 200 || resp.status === 201) {
+      const amount = req.body.amount ?? 0;
+      const merchant = req.body.payeeSiteName ?? "a merchant";
+      const accountUuid = req.body.payerAccountUuid;
+
+      await sendPushNotification(
+        accountUuid,
+        "Payment Successful 💳",
+        `R${parseFloat(amount).toFixed(2)} paid to ${merchant}`
+      );
+    }
     try { res.status(resp.status).json(JSON.parse(text)); }
     catch { res.status(resp.status).send(text); }
   } catch (err) {

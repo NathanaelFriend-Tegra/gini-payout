@@ -80,8 +80,6 @@ const HomePage: React.FC = () => {
 
       <BalanceCard
         cashBalance={balance}
-        storeCredits={[]}
-        totalStoreCredit={"R0.00"}
         walletRef={walletRef}
         loading={loading}
       />

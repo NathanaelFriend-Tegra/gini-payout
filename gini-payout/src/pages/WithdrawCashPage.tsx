@@ -7,6 +7,7 @@ import { GiniButton } from '@/components/ui/GiniButton';
 import { InfoCard } from '@/components/ui/InfoCard';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+import { sendSpendNotification } from '@/lib/notifications';
 
 import {
   sendATMCash,
@@ -106,15 +107,19 @@ const WithdrawCashPage: React.FC = () => {
 
       console.log('✅ ATM CashSend response:', response);
 
+      sendSpendNotification(
+        "Cash Withdrawal Ready",
+        `R${enteredAmount.toFixed(2)} withdrawal code generated for ${provider} ATM`
+      );
+
       setResult({
         cash_token:
           response.referenceNumber ||
           response.transactionId ||
           'ATM' + Math.random().toString(36).substring(2, 10).toUpperCase(),
         expires_at: response.expiresAt || '24 hours',
-        instructions: `Visit any ${provider} ATM, select "Cardless withdrawal", and enter your reference number${
-          response.pin ? ` and PIN: ${response.pin}` : ''
-        } to collect your cash.`,
+        instructions: `Visit any ${provider} ATM, select "Cardless withdrawal", and enter your reference number${response.pin ? ` and PIN: ${response.pin}` : ''
+          } to collect your cash.`,
         mobileNumber,
         amount,
         provider,
